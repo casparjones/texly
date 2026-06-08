@@ -7,7 +7,7 @@ COPY static/js/entry.js ./entry.js
 RUN ./node_modules/.bin/esbuild entry.js --bundle --format=esm --minify --outfile=editor.bundle.js
 
 # Rust build stage
-FROM rust:1.75-bookworm AS builder
+FROM rust:1.82-bookworm AS builder
 WORKDIR /build
 COPY Cargo.toml Cargo.lock ./
 # Dummy build for layer caching
