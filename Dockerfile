@@ -24,9 +24,11 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Tectonic
-RUN wget -qO /usr/local/bin/tectonic \
-    "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic@0.16.0/tectonic-0.16.0-x86_64-unknown-linux-musl" \
-    && chmod +x /usr/local/bin/tectonic
+RUN wget -qO /tmp/tectonic.tar.gz \
+    "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.16.9/tectonic-0.16.9-x86_64-unknown-linux-musl.tar.gz" \
+    && tar -xzf /tmp/tectonic.tar.gz -C /usr/local/bin \
+    && chmod +x /usr/local/bin/tectonic \
+    && rm /tmp/tectonic.tar.gz
 
 WORKDIR /app
 COPY --from=builder /build/target/release/texly ./
