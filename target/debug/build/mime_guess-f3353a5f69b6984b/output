@@ -1,0 +1,1 @@
+cargo:rustc-env=MIME_TYPES_GENERATED_PATH=/work/work-data/projects/texly/target/debug/build/mime_guess-f3353a5f69b6984b/out/mime_types_generated.rs

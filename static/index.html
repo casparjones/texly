@@ -1,0 +1,1905 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Texly</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── CSS Variables ────────────────────────────────────────────────────── */
+    :root,
+    [data-theme="dark"] {
+      --accent:         #3b82f6;
+      --accent-hover:   #2563eb;
+      --bg-0:           #0b0c0f;
+      --bg-1:           #101216;
+      --bg-2:           #16181d;
+      --bg-3:           #1e2128;
+      --border:         #2a2d35;
+      --text-0:         #f0f2f5;
+      --text-1:         #9aa3b2;
+      --text-2:         #5c6577;
+      --danger:         #ef4444;
+      --success:        #22c55e;
+      --warn:           #f59e0b;
+      --shadow:         0 8px 32px rgba(0,0,0,.45);
+
+      /* LaTeX token colors */
+      --t-cmd:   #79c0ff;
+      --t-env:   #7ee787;
+      --t-math:  #ffa657;
+      --t-arg:   #d2a8ff;
+      --t-cmt:   #484f58;
+      --t-str:   #a5d6ff;
+    }
+
+    [data-theme="light"] {
+      --bg-0:           #f5f6f8;
+      --bg-1:           #ffffff;
+      --bg-2:           #eef0f4;
+      --bg-3:           #e4e7ed;
+      --border:         #d1d5db;
+      --text-0:         #111827;
+      --text-1:         #4b5563;
+      --text-2:         #9ca3af;
+      --shadow:         0 8px 32px rgba(0,0,0,.12);
+
+      --t-cmd:   #0550ae;
+      --t-env:   #116329;
+      --t-math:  #953800;
+      --t-arg:   #8250df;
+      --t-cmt:   #6e7781;
+      --t-str:   #0a3069;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-0);
+      color: var(--text-0);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Topbar ──────────────────────────────────────────────────────────── */
+    #topbar {
+      height: 48px;
+      background: var(--bg-1);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    #breadcrumb {
+      font-size: 13px;
+      color: var(--text-1);
+      flex: 1;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    #breadcrumb span { color: var(--text-0); font-weight: 500; }
+    #breadcrumb .sep { color: var(--text-2); margin: 0 4px; }
+
+    .topbar-sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+
+    #statusDot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-2);
+      flex-shrink: 0;
+    }
+    #statusDot.ok { background: var(--success); }
+    #statusDot.err { background: var(--danger); }
+    #statusDot.running { background: var(--warn); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    #compileDuration { font-size: 12px; color: var(--text-2); min-width: 48px; }
+
+    .topbar-btn {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text-1);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      padding: 5px 10px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      transition: background .15s, color .15s;
+      flex-shrink: 0;
+    }
+    .topbar-btn:hover { background: var(--bg-3); color: var(--text-0); }
+    .topbar-btn.accent { background: var(--accent); border-color: transparent; color: #fff; }
+    .topbar-btn.accent:hover { background: var(--accent-hover); }
+    .topbar-btn.icon { padding: 5px 8px; }
+
+    #autoCompileToggle.active { color: var(--accent); }
+
+    /* ── Layout ──────────────────────────────────────────────────────────── */
+    #workspace {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────────── */
+    #sidebar {
+      width: 220px;
+      min-width: 160px;
+      max-width: 320px;
+      background: var(--bg-1);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    #projectSwitcher {
+      padding: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    #projectSelect {
+      width: 100%;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text-0);
+      font-family: inherit;
+      font-size: 13px;
+      padding: 6px 8px;
+      cursor: pointer;
+      outline: none;
+    }
+    #projectSelect:focus { border-color: var(--accent); }
+
+    #fileTreeContainer {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tree-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px 3px calc(var(--depth, 0) * 14px + 8px);
+      font-size: 13px;
+      cursor: pointer;
+      border-radius: 5px;
+      margin: 1px 4px;
+      user-select: none;
+      color: var(--text-1);
+      position: relative;
+    }
+    .tree-item:hover { background: var(--bg-2); color: var(--text-0); }
+    .tree-item.active { background: rgba(59,130,246,.15); color: var(--accent); }
+    .tree-item.drag-over { background: rgba(59,130,246,.25); outline: 2px solid var(--accent); outline-offset: -2px; }
+    .tree-item[draggable="true"] { cursor: grab; }
+    .tree-item[draggable="true"]:active { cursor: grabbing; }
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--bg-3); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 16px; font-size: 13px; color: var(--text-0);
+      display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.4); z-index: 9999;
+      opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+    #toast button { padding: 4px 10px; border-radius: 5px; font-size: 12px; cursor: pointer; }
+    #toastConfirm { background: var(--danger); color: #fff; border: none; }
+    #toastCancel  { background: var(--bg-2); color: var(--text-1); border: 1px solid var(--border); }
+    .tree-item .icon { font-size: 12px; flex-shrink: 0; }
+    .tree-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tree-item .chevron { font-size: 10px; color: var(--text-2); transition: transform .15s; }
+    .tree-item.collapsed .chevron { transform: rotate(-90deg); }
+
+    #sidebarFooter {
+      padding: 8px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    #sidebarFooter button {
+      flex: 1;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-1);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      padding: 5px;
+      transition: background .15s;
+    }
+    #sidebarFooter button:hover { background: var(--bg-3); color: var(--text-0); }
+
+    /* Context menu */
+    #contextMenu, #ctxSubmenu {
+      position: fixed;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 4px;
+      z-index: 1000;
+      min-width: 180px;
+      display: none;
+    }
+    .ctx-sep { height: 1px; background: var(--border); margin: 3px 4px; }
+    .ctx-item {
+      padding: 7px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      border-radius: 5px;
+      color: var(--text-1);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ctx-item:hover { background: var(--bg-3); color: var(--text-0); }
+    .ctx-item.danger { color: var(--danger); }
+    .ctx-item.danger:hover { background: rgba(239,68,68,.1); }
+    .ctx-item .ctx-arrow { margin-left: auto; color: var(--text-2); font-size: 10px; }
+    #ctxSubmenu .ctx-item { font-size: 12px; padding: 6px 10px; }
+
+    /* ── Editor panel ─────────────────────────────────────────────────────── */
+    #editorPanel {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    /* Tab bar */
+    #tabBar {
+      display: flex;
+      background: var(--bg-1);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      flex-shrink: 0;
+      scrollbar-width: none;
+    }
+    #tabBar::-webkit-scrollbar { display: none; }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 14px;
+      height: 36px;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      border-right: 1px solid var(--border);
+      color: var(--text-2);
+      user-select: none;
+      flex-shrink: 0;
+    }
+    .tab:hover { background: var(--bg-2); color: var(--text-1); }
+    .tab.active { background: var(--bg-0); color: var(--text-0); border-bottom: 2px solid var(--accent); }
+    .tab .close-tab {
+      font-size: 14px;
+      color: var(--text-2);
+      padding: 0 2px;
+      border-radius: 3px;
+    }
+    .tab .close-tab:hover { background: var(--bg-3); color: var(--text-0); }
+    .tab.modified::after { content: '●'; color: var(--accent); font-size: 8px; margin-left: 2px; }
+
+    /* CodeMirror editor */
+    #editorContainer {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+    .cm-editor {
+      height: 100%;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 14px !important;
+    }
+    .cm-editor .cm-content { padding: 8px 0; }
+    .cm-editor.cm-focused { outline: none; }
+
+    #editorPlaceholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      flex-direction: column;
+      gap: 12px;
+      color: var(--text-2);
+    }
+    #editorPlaceholder .big { font-size: 48px; }
+    #editorPlaceholder p { font-size: 14px; }
+
+    /* Terminal / Problems panel */
+    #problemsPanel {
+      background: var(--bg-1);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      height: 180px;
+      min-height: 80px;
+      max-height: 60vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #termResizeHandle {
+      height: 4px;
+      cursor: ns-resize;
+      background: transparent;
+      flex-shrink: 0;
+      transition: background .15s;
+    }
+    #termResizeHandle:hover, #termResizeHandle.dragging { background: var(--accent); }
+    #problemsHeader {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-1);
+      user-select: none;
+      flex-shrink: 0;
+    }
+    #termLog {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-2);
+      padding: 4px 12px;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #termLog .ok   { color: #4ec94e; }
+    #termLog .err  { color: var(--danger); }
+    #termLog .run  { color: var(--accent); }
+    #problemsScrollArea { overflow-y: auto; flex: 1; }
+    #problemsBody { padding: 4px 0; }
+
+    .problem-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 4px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .problem-item:hover { background: var(--bg-2); }
+    .problem-item .ptype { font-weight: 600; flex-shrink: 0; width: 50px; }
+    .problem-item .ptype.error { color: var(--danger); }
+    .problem-item .ptype.warning { color: var(--warn); }
+    .problem-item .ploc { color: var(--text-2); flex-shrink: 0; width: 120px; overflow: hidden; text-overflow: ellipsis; }
+    .problem-item .pmsg { color: var(--text-1); }
+
+    /* ── PDF viewer ───────────────────────────────────────────────────────── */
+    /* ── Panel divider (drag to resize) ─────────────────────────────────── */
+    #panelDivider {
+      width: 5px;
+      background: var(--border);
+      cursor: col-resize;
+      flex-shrink: 0;
+      transition: background .15s;
+      position: relative;
+      z-index: 1;
+    }
+    #panelDivider:hover,
+    #panelDivider.dragging { background: var(--accent); }
+
+    #pdfPanel {
+      width: 420px;
+      min-width: 200px;
+      background: var(--bg-0);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    #pdfToolbar {
+      height: 36px;
+      background: var(--bg-1);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 10px;
+      flex-shrink: 0;
+    }
+    #pdfToolbar label { font-size: 12px; color: var(--text-2); }
+    #pdfToolbar input[type="number"] {
+      width: 40px;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text-0);
+      font-size: 12px;
+      padding: 2px 4px;
+      text-align: center;
+    }
+    #pageCount { font-size: 12px; color: var(--text-2); }
+    .pdf-btn {
+      background: none;
+      border: none;
+      color: var(--text-1);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+    .pdf-btn:hover { background: var(--bg-2); color: var(--text-0); }
+
+    #zoomSelect {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text-0);
+      font-size: 12px;
+      padding: 2px 4px;
+    }
+
+    #pdfContainer {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px;
+      gap: 8px;
+    }
+    #pdfContainer canvas {
+      box-shadow: 0 2px 8px rgba(0,0,0,.5);
+      display: block;
+    }
+    #pdfEmpty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-2);
+      font-size: 13px;
+    }
+
+    /* ── Modals / Overlays ───────────────────────────────────────────────── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.6);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+    .overlay.hidden { display: none; }
+
+    .modal {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+      width: 480px;
+      max-width: 95vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow);
+    }
+    .modal h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--text-0);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .form-group label { font-size: 13px; color: var(--text-1); font-weight: 500; }
+    .form-group input,
+    .form-group select {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-0);
+      font-family: inherit;
+      font-size: 13px;
+      padding: 8px 10px;
+      outline: none;
+      width: 100%;
+    }
+    .form-group input:focus,
+    .form-group select:focus { border-color: var(--accent); }
+
+    .modal-footer {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+    .btn {
+      border-radius: 7px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 16px;
+      transition: background .15s;
+    }
+    .btn-secondary {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      color: var(--text-1);
+    }
+    .btn-secondary:hover { background: var(--bg-3); }
+    .btn-primary-sm {
+      background: var(--accent);
+      border: none;
+      color: #fff;
+    }
+    .btn-primary-sm:hover { background: var(--accent-hover); }
+    .btn-danger {
+      background: rgba(239,68,68,.15);
+      border: 1px solid rgba(239,68,68,.3);
+      color: var(--danger);
+    }
+    .btn-danger:hover { background: rgba(239,68,68,.25); }
+
+    /* User management modal */
+    #userList { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .user-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-2);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+    .user-row .uname { flex: 1; font-weight: 500; }
+    .user-row .urole {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--bg-3);
+      color: var(--text-1);
+    }
+    .user-row .urole.superadmin { background: rgba(59,130,246,.2); color: var(--accent); }
+    .user-row .urole.admin { background: rgba(34,197,94,.15); color: var(--success); }
+
+    /* Divider */
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+    .msg { font-size: 12px; padding: 8px 10px; border-radius: 7px; margin-top: 8px; }
+    .msg.error { background: rgba(239,68,68,.1); color: var(--danger); }
+    .msg.success { background: rgba(34,197,94,.1); color: var(--success); }
+    .msg.hidden { display: none; }
+
+    /* Confirm dialog */
+    #confirmOverlay { z-index: 200; }
+    #confirmModal { width: 360px; }
+    #confirmText { font-size: 14px; color: var(--text-1); margin-bottom: 20px; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-2); }
+  </style>
+</head>
+<body>
+
+<!-- ── Topbar ─────────────────────────────────────────────────────────────── -->
+<div id="topbar">
+  <div class="brand-mark">T</div>
+  <div id="breadcrumb">
+    <span id="bcProject">–</span>
+    <span class="sep" id="bcSep" style="display:none">/</span>
+    <span id="bcFile" style="display:none"></span>
+  </div>
+
+  <div class="topbar-sep"></div>
+  <div id="statusDot"></div>
+  <span id="compileDuration"></span>
+
+  <button class="topbar-btn icon" id="autoCompileToggle" title="Auto-Compile (nach Speichern)">⚡</button>
+  <button class="topbar-btn accent" id="compileBtn" title="Kompilieren (Ctrl+Enter)">▶ Kompilieren</button>
+  <div class="topbar-sep"></div>
+  <button class="topbar-btn icon" id="themeToggle" title="Theme wechseln">🌙</button>
+  <button class="topbar-btn icon" id="settingsBtn" title="Einstellungen" style="display:none">⚙️</button>
+  <button class="topbar-btn icon" id="logoutBtn" title="Abmelden">↩</button>
+</div>
+
+<!-- ── Workspace ──────────────────────────────────────────────────────────── -->
+<div id="workspace">
+
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div id="projectSwitcher">
+      <select id="projectSelect"><option>Lade…</option></select>
+    </div>
+    <div id="fileTreeContainer"></div>
+    <div id="sidebarFooter">
+      <button type="button" id="uploadBtn" style="display:flex;align-items:center;justify-content:center;gap:4px"><span>⬆</span><span>Upload</span></button>
+      <button type="button" id="zipImportBtn" title="ZIP importieren">📥 ZIP</button>
+      <button type="button" id="zipExportBtn" title="ZIP exportieren">📦</button>
+    </div>
+  </div>
+
+  <!-- Editor panel -->
+  <div id="editorPanel">
+    <div id="tabBar"></div>
+    <div id="editorContainer">
+      <div id="editorPlaceholder">
+        <div class="big">📄</div>
+        <p>Datei aus der Sidebar öffnen</p>
+      </div>
+    </div>
+    <!-- Terminal / Problems panel -->
+    <div id="problemsPanel">
+      <div id="termResizeHandle"></div>
+      <div id="problemsHeader">
+        <strong>Terminal</strong>
+        <span id="termLog">–</span>
+        <span style="flex:1"></span>
+        <span id="problemsCount" style="color:var(--text-2)">–</span>
+      </div>
+      <div id="problemsScrollArea">
+        <div id="problemsBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drag divider -->
+  <div id="panelDivider"></div>
+
+  <!-- PDF Viewer -->
+  <div id="pdfPanel">
+    <div id="pdfToolbar">
+      <button class="pdf-btn" id="prevPage">◀</button>
+      <input type="number" id="pageInput" value="1" min="1" />
+      <span id="pageCount">/ –</span>
+      <button class="pdf-btn" id="nextPage">▶</button>
+      <div style="flex:1"></div>
+      <button class="pdf-btn" id="downloadPdf" title="PDF herunterladen" style="font-size:14px">⬇</button>
+      <select id="zoomSelect">
+        <option value="0.5">50%</option>
+        <option value="0.75">75%</option>
+        <option value="1" selected>100%</option>
+        <option value="1.25">125%</option>
+        <option value="1.5">150%</option>
+        <option value="2">200%</option>
+      </select>
+    </div>
+    <div id="pdfContainer">
+      <div id="pdfEmpty">Noch kein PDF – kompiliere zuerst</div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast confirm -->
+<div id="toast">
+  <span id="toastMsg"></span>
+  <button id="toastCancel">Abbrechen</button>
+  <button id="toastConfirm">Löschen</button>
+</div>
+
+<!-- Context menu -->
+<div id="contextMenu">
+  <div class="ctx-item" id="ctx-rename">✏️ Umbenennen</div>
+  <div class="ctx-item" id="ctx-newfile">📄 Neue Datei hier</div>
+  <div class="ctx-item" id="ctx-newdir">📁 Neuer Ordner hier</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" id="ctx-upload">⬆ Upload hier</div>
+  <div class="ctx-item" id="ctx-zip-export">📦 ZIP <span id="ctxZipName" style="color:var(--text-2)"></span></div>
+  <div class="ctx-item" id="ctx-zip-import">📥 ZIP importieren</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" id="ctx-copy">📋 Kopieren nach <span class="ctx-arrow">▶</span></div>
+  <div class="ctx-item" id="ctx-move">✂️ Verschieben nach <span class="ctx-arrow">▶</span></div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" id="ctx-delete">🗑 Löschen</div>
+</div>
+<div id="ctxSubmenu"></div>
+
+<!-- Confirm overlay -->
+<div class="overlay hidden" id="confirmOverlay">
+  <div class="modal" id="confirmModal">
+    <h2>Bestätigung</h2>
+    <p id="confirmText"></p>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="confirmCancel">Abbrechen</button>
+      <button class="btn btn-danger" id="confirmOk">Löschen</button>
+    </div>
+  </div>
+</div>
+
+<!-- New file/dir overlay -->
+<div class="overlay hidden" id="newItemOverlay">
+  <div class="modal" style="width:360px">
+    <h2 id="newItemTitle">Neue Datei</h2>
+    <div class="form-group">
+      <label>Name</label>
+      <input type="text" id="newItemName" placeholder="dateiname.tex" autocomplete="off" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="newItemCancel">Abbrechen</button>
+      <button class="btn btn-primary-sm" id="newItemOk">Erstellen</button>
+    </div>
+  </div>
+</div>
+
+<!-- User management overlay -->
+<div class="overlay hidden" id="usersOverlay">
+  <div class="modal">
+    <h2>Benutzerverwaltung</h2>
+
+    <div id="userList"></div>
+
+    <div class="divider"></div>
+    <strong style="font-size:13px;color:var(--text-1)">Neuer Benutzer</strong>
+    <div style="margin-top:12px">
+      <div class="form-group"><label>Benutzername</label><input type="text" id="newUsername" /></div>
+      <div class="form-group"><label>Passwort</label><input type="password" id="newPassword" /></div>
+      <div class="form-group" id="newRoleGroup">
+        <label>Rolle</label>
+        <select id="newRole">
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+          <option value="superadmin">Superadmin</option>
+        </select>
+      </div>
+      <button class="btn btn-primary-sm" id="createUserBtn" style="width:100%;margin-top:4px">Benutzer erstellen</button>
+      <div class="msg hidden" id="userMsg"></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="closeUsersBtn">Schließen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit user overlay -->
+<div class="overlay hidden" id="editUserOverlay">
+  <div class="modal" style="width:360px">
+    <h2>Benutzer bearbeiten: <span id="editUsername"></span></h2>
+    <div class="form-group"><label>Neues Passwort</label><input type="password" id="editPassword" placeholder="Leer lassen = unverändert" /></div>
+    <div class="form-group" id="editRoleGroup">
+      <label>Rolle</label>
+      <select id="editRole">
+        <option value="user">User</option>
+        <option value="admin">Admin</option>
+        <option value="superadmin">Superadmin</option>
+      </select>
+    </div>
+    <div class="msg hidden" id="editMsg"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="editUserCancel">Abbrechen</button>
+      <button class="btn btn-primary-sm" id="editUserSave">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden upload input -->
+<input type="file" id="uploadInput" style="display:none" multiple />
+<input type="file" id="zipInput" style="display:none" accept=".zip" />
+
+<!-- PDF.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  // ── PDF.js worker ──────────────────────────────────────────────────────────
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+</script>
+
+<!-- Main app (ES module) -->
+<script type="module">
+import { EditorState, EditorView, basicSetup, StreamLanguage, stex } from '/static/js/editor.bundle.js?v=2';
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentUser = null;       // { username, role }
+let currentRoot = null;       // "home/alice" or "share"
+let currentProject = null;    // root path string
+let tabs = [];                // [{ path, name, content, modified, editorState }]
+let activeTabIndex = -1;
+let editorView = null;
+let autoCompile = false;
+let autoCompileTimer = null;
+let pdfDoc = null;
+let pdfScale = 1.0;
+let currentPdfPath = null;
+let ctxTarget = null;         // tree item for context menu
+let newItemMode = null;       // 'file' | 'dir'
+let newItemBasePath = null;   // directory where new item goes
+
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const bcProject    = document.getElementById('bcProject');
+const bcSep        = document.getElementById('bcSep');
+const bcFile       = document.getElementById('bcFile');
+const statusDot    = document.getElementById('statusDot');
+const compileDur   = document.getElementById('compileDuration');
+const projectSel   = document.getElementById('projectSelect');
+const fileTree     = document.getElementById('fileTreeContainer');
+const tabBar       = document.getElementById('tabBar');
+const editorCont   = document.getElementById('editorContainer');
+const placeholder  = document.getElementById('editorPlaceholder');
+const problemsHdr  = document.getElementById('problemsHeader');
+const problemsBody = document.getElementById('problemsBody');
+const problemsCnt  = document.getElementById('problemsCount');
+const termLog      = document.getElementById('termLog');
+const pdfContainer = document.getElementById('pdfContainer');
+const pdfEmpty     = document.getElementById('pdfEmpty');
+const pageInput    = document.getElementById('pageInput');
+const pageCount    = document.getElementById('pageCount');
+const zoomSel      = document.getElementById('zoomSelect');
+const contextMenu  = document.getElementById('contextMenu');
+const themeToggle  = document.getElementById('themeToggle');
+const settingsBtn  = document.getElementById('settingsBtn');
+const logoutBtn    = document.getElementById('logoutBtn');
+const compileBtn   = document.getElementById('compileBtn');
+const autoToggle   = document.getElementById('autoCompileToggle');
+const uploadInput  = document.getElementById('uploadInput');
+
+// ── Panel divider drag-to-resize ──────────────────────────────────────────────
+(function() {
+  const divider  = document.getElementById('panelDivider');
+  const edPanel  = document.getElementById('editorPanel');
+  const pdfPanel = document.getElementById('pdfPanel');
+  let dragging = false, startX = 0, startPdf = 0;
+
+  divider.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    dragging = true;
+    startX = e.clientX;
+    startPdf = pdfPanel.offsetWidth;
+    divider.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const delta = startX - e.clientX;
+    const newW = Math.max(200, Math.min(startPdf + delta, window.innerWidth - 400));
+    pdfPanel.style.width = newW + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    divider.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+})();
+
+// ── Terminal panel drag-to-resize ──────────────────────────────────────────────
+(function() {
+  const handle   = document.getElementById('termResizeHandle');
+  const panel    = document.getElementById('problemsPanel');
+  let dragging = false, startY = 0, startH = 0;
+
+  handle.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    dragging = true;
+    startY = e.clientY;
+    startH = panel.offsetHeight;
+    handle.classList.add('dragging');
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const delta = startY - e.clientY;
+    const newH = Math.max(80, Math.min(startH + delta, window.innerHeight * 0.6));
+    panel.style.height = newH + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    handle.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+})();
+
+// ── CodeMirror themes ─────────────────────────────────────────────────────────
+const darkTheme = EditorView.theme({
+  '&': { background: 'var(--bg-0)', color: 'var(--text-0)', height: '100%' },
+  '.cm-content': { caretColor: 'var(--accent)' },
+  '.cm-cursor': { borderLeftColor: 'var(--accent)' },
+  '.cm-selectionBackground, ::selection': { background: 'rgba(59,130,246,.25) !important' },
+  '.cm-gutters': { background: 'var(--bg-1)', borderRight: '1px solid var(--border)', color: 'var(--text-2)' },
+  '.cm-activeLineGutter': { background: 'var(--bg-2)' },
+  '.cm-activeLine': { background: 'rgba(59,130,246,.06)' },
+  '.cm-matchingBracket': { background: 'rgba(59,130,246,.3)', outline: 'none' },
+  '.cm-keyword': { color: 'var(--t-cmd)' },
+  '.cm-def': { color: 'var(--t-env)' },
+  '.cm-atom': { color: 'var(--t-math)' },
+  '.cm-variable': { color: 'var(--text-0)' },
+  '.cm-comment': { color: 'var(--t-cmt)', fontStyle: 'italic' },
+  '.cm-string': { color: 'var(--t-str)' },
+}, { dark: true });
+
+const lightTheme = EditorView.theme({
+  '&': { background: 'var(--bg-1)', color: 'var(--text-0)', height: '100%' },
+  '.cm-content': { caretColor: 'var(--accent)' },
+  '.cm-cursor': { borderLeftColor: 'var(--accent)' },
+  '.cm-selectionBackground, ::selection': { background: 'rgba(59,130,246,.2) !important' },
+  '.cm-gutters': { background: 'var(--bg-2)', borderRight: '1px solid var(--border)', color: 'var(--text-2)' },
+  '.cm-activeLineGutter': { background: 'var(--bg-3)' },
+  '.cm-activeLine': { background: 'rgba(59,130,246,.04)' },
+  '.cm-keyword': { color: 'var(--t-cmd)' },
+  '.cm-def': { color: 'var(--t-env)' },
+  '.cm-atom': { color: 'var(--t-math)' },
+  '.cm-comment': { color: 'var(--t-cmt)', fontStyle: 'italic' },
+  '.cm-string': { color: 'var(--t-str)' },
+}, { dark: false });
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function api(path, opts = {}) {
+  return fetch(path, { credentials: 'same-origin', ...opts });
+}
+
+function showOverlay(id) { document.getElementById(id).classList.remove('hidden'); }
+function hideOverlay(id) { document.getElementById(id).classList.add('hidden');   }
+
+function confirm(msg) {
+  return new Promise(resolve => {
+    document.getElementById('confirmText').textContent = msg;
+    showOverlay('confirmOverlay');
+    document.getElementById('confirmOk').onclick = () => { hideOverlay('confirmOverlay'); resolve(true); };
+    document.getElementById('confirmCancel').onclick = () => { hideOverlay('confirmOverlay'); resolve(false); };
+  });
+}
+
+function basename(p) { return p.split('/').pop(); }
+function dirname(p)  { const parts = p.split('/'); parts.pop(); return parts.join('/'); }
+
+// ── Theme ─────────────────────────────────────────────────────────────────────
+const html = document.documentElement;
+const savedTheme = localStorage.getItem('texly-theme') || 'dark';
+html.setAttribute('data-theme', savedTheme);
+themeToggle.textContent = savedTheme === 'dark' ? '🌙' : '☀️';
+
+themeToggle.addEventListener('click', () => {
+  const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('texly-theme', next);
+  themeToggle.textContent = next === 'dark' ? '🌙' : '☀️';
+  if (editorView) {
+    // Recreate with new theme
+    const content = editorView.state.doc.toString();
+    recreateEditor(content);
+  }
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  // Check auth
+  const res = await api('/auth/me');
+  if (!res.ok) { window.location.href = '/login'; return; }
+  currentUser = await res.json();
+
+  // Show admin button
+  if (currentUser.role === 'admin' || currentUser.role === 'superadmin') {
+    settingsBtn.style.display = '';
+  }
+
+  // Load roots
+  await loadRoots();
+}
+
+// ── Project roots & navigation ────────────────────────────────────────────────
+let allRoots = [];   // [{name, path}] from /api/fs
+
+async function loadRoots() {
+  const res = await api('/api/fs');
+  if (!res.ok) return;
+  allRoots = await res.json();
+
+  // Restore saved dir, fall back to first root
+  const saved = localStorage.getItem('texly-dir');
+  const startDir = (saved && (allRoots.some(r => saved === r.path || saved.startsWith(r.path + '/'))))
+    ? saved
+    : (allRoots[0]?.path || '');
+
+  await navigateToDir(startDir);
+}
+
+// Navigate into any directory (root or sub-folder)
+async function navigateToDir(dirPath) {
+  currentProject = dirPath;
+  localStorage.setItem('texly-dir', dirPath);
+  updateBreadcrumb(dirPath);
+  rebuildDropdown(dirPath);
+  await loadFileTree(dirPath);
+}
+
+// Breadcrumb: show at most last 2 segments, prefix with "…/" if deeper
+function updateBreadcrumb(path) {
+  const parts = path.split('/').filter(Boolean);
+  if (parts.length <= 2) {
+    bcProject.textContent = parts.join('/');
+  } else {
+    bcProject.textContent = '…/' + parts.slice(-2).join('/');
+  }
+}
+
+// Dropdown: ancestor chain of dirPath + other roots as separator group
+function rebuildDropdown(dirPath) {
+  projectSel.innerHTML = '';
+
+  // Determine which root dirPath belongs to
+  const owningRoot = allRoots.find(r => dirPath === r.path || dirPath.startsWith(r.path + '/'));
+
+  // Build ancestor options for the owning root's chain
+  if (owningRoot) {
+    const segments = dirPath.split('/').filter(Boolean);
+    const rootSegs = owningRoot.path.split('/').filter(Boolean);
+    // Add each ancestor from root down to current dir
+    for (let i = rootSegs.length; i <= segments.length; i++) {
+      const p = segments.slice(0, i).join('/');
+      const opt = document.createElement('option');
+      opt.value = p;
+      opt.textContent = segments[i - 1];   // last segment of this level
+      if (p === dirPath) opt.selected = true;
+      projectSel.appendChild(opt);
+    }
+  }
+
+  // Other roots (different from owning root)
+  const others = allRoots.filter(r => r !== owningRoot);
+  if (others.length) {
+    if (owningRoot) {
+      const sep = document.createElement('option');
+      sep.disabled = true;
+      sep.textContent = '─────────';
+      projectSel.appendChild(sep);
+    }
+    for (const r of others) {
+      const opt = document.createElement('option');
+      opt.value = r.path;
+      opt.textContent = r.name;
+      projectSel.appendChild(opt);
+    }
+  }
+}
+
+projectSel.addEventListener('change', async () => {
+  const val = projectSel.value;
+  if (val) await navigateToDir(val);
+});
+
+// ── File tree (flat – single level, folder click navigates) ───────────────────
+async function loadFileTree(dir) {
+  fileTree.innerHTML = '<div style="padding:8px;color:var(--text-2);font-size:12px">Lade…</div>';
+  const res = await api(`/api/fs/${dir}`);
+  if (!res.ok) { fileTree.innerHTML = '<div style="padding:8px;color:var(--danger);font-size:12px">Fehler</div>'; return; }
+  const entries = await res.json();
+  fileTree.innerHTML = '';
+
+  // ".." back entry — also a drop target for moving into parent
+  const isRoot = allRoots.some(r => r.path === dir);
+  if (!isRoot) {
+    const parentDir = dirname(dir);
+    const back = document.createElement('div');
+    back.className = 'tree-item';
+    back.innerHTML = '<span class="icon">📂</span><span class="name">..</span>';
+    back.addEventListener('click', e => { e.stopPropagation(); navigateToDir(parentDir); });
+    makeDragTarget(back, parentDir);
+    fileTree.appendChild(back);
+  }
+
+  if (entries.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text-2);padding:32px 0;';
+    empty.innerHTML = `<span style="font-size:36px;opacity:.4">📁</span>
+      <span style="font-size:12px">Ordner ist leer</span>
+      <button type="button" style="font-size:22px;background:none;border:2px dashed var(--border);border-radius:50%;width:48px;height:48px;cursor:pointer;color:var(--text-2);line-height:1;" title="Neue Datei" id="emptyPlusBtn">+</button>`;
+    fileTree.appendChild(empty);
+    document.getElementById('emptyPlusBtn').addEventListener('click', () => openNewItemDialog('file', dir));
+  } else {
+    renderTree(fileTree, entries);
+  }
+}
+
+function makeDragTarget(el, destPath) {
+  el.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; el.classList.add('drag-over'); });
+  el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+  el.addEventListener('drop', async e => {
+    e.preventDefault();
+    el.classList.remove('drag-over');
+    const srcPath = e.dataTransfer.getData('text/plain');
+    if (!srcPath || srcPath === destPath || dirname(srcPath) === destPath) return;
+    const res = await api(`/api/move/${srcPath}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ destination: destPath }),
+    });
+    if (res.ok) {
+      // Update open tab path if the moved file is open
+      const movedName = srcPath.split('/').pop();
+      const newPath = destPath + '/' + movedName;
+      tabs.forEach(t => { if (t.path === srcPath) t.path = newPath; });
+      await loadFileTree(currentProject);
+    }
+  });
+}
+
+function renderTree(container, entries) {
+  for (const entry of entries) {
+    const item = document.createElement('div');
+    item.className = 'tree-item';
+    item.dataset.path = entry.path;
+    item.dataset.type = entry.type;
+
+    if (entry.type === 'dir') {
+      item.innerHTML = `<span class="icon">📁</span><span class="name">${entry.name}</span>`;
+      item.addEventListener('click', e => { e.stopPropagation(); navigateToDir(entry.path); });
+      makeDragTarget(item, entry.path);
+    } else {
+      if (tabs[activeTabIndex]?.path === entry.path) item.classList.add('active');
+      item.innerHTML = `<span class="icon">${fileIcon(entry.name)}</span><span class="name">${entry.name}</span>`;
+      item.setAttribute('draggable', 'true');
+      item.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('text/plain', entry.path);
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      item.addEventListener('click', e => { e.stopPropagation(); openFile(entry.path, entry.name); });
+    }
+
+    item.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); showContextMenu(e.clientX, e.clientY, entry); });
+    container.appendChild(item);
+  }
+}
+
+function fileIcon(name) {
+  if (name.endsWith('.tex')) return '📝';
+  if (name.endsWith('.pdf')) return '📄';
+  if (name.endsWith('.bib')) return '📚';
+  if (name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.svg')) return '🖼️';
+  return '📄';
+}
+
+// ── Context menu ──────────────────────────────────────────────────────────────
+function showContextMenu(x, y, entry) {
+  ctxTarget = entry;
+  closeSubmenu();
+
+  // ZIP label shows folder name
+  const ctxDir = entry.type === 'dir' ? entry.path : dirname(entry.path);
+  document.getElementById('ctxZipName').textContent = ctxDir.split('/').pop();
+
+  // copy/move only shown when there are destinations beyond current dir
+  const hasDests = allRoots.some(r => r.path !== ctxDir && !ctxDir.startsWith(r.path + '/') || r.path === 'share');
+  ['ctx-copy','ctx-move'].forEach(id => {
+    document.getElementById(id).style.display = hasDests ? '' : 'none';
+  });
+
+  contextMenu.style.display = 'block';
+  const mw = 220, mh = contextMenu.scrollHeight;
+  const left = Math.min(x, window.innerWidth  - mw - 8);
+  const top  = Math.min(y, window.innerHeight - mh - 8);
+  contextMenu.style.left = left + 'px';
+  contextMenu.style.top  = top  + 'px';
+}
+
+const ctxSubmenu = document.getElementById('ctxSubmenu');
+
+function closeSubmenu() { ctxSubmenu.style.display = 'none'; }
+function closeContextMenu() { contextMenu.style.display = 'none'; closeSubmenu(); }
+
+document.addEventListener('click', closeContextMenu);
+document.addEventListener('contextmenu', closeContextMenu);
+
+async function ctxCopyOrMove(destRoot, mode) {
+  if (!ctxTarget) return;
+  const endpoint = mode === 'copy' ? 'copy' : 'move';
+  const res = await api(`/api/${endpoint}/${ctxTarget.path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ destination: destRoot }),
+  });
+  if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.error || 'Fehler'); return; }
+  if (mode === 'move') {
+    const ti = tabs.findIndex(t => t.path === ctxTarget.path || t.path.startsWith(ctxTarget.path + '/'));
+    if (ti >= 0) closeTab(ti);
+  }
+  await loadFileTree(currentProject);
+}
+
+function showDestSubmenu(anchorEl, mode) {
+  ctxSubmenu.innerHTML = '';
+
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
+  const ctxDir  = ctxTarget ? (ctxTarget.type === 'dir' ? ctxTarget.path : dirname(ctxTarget.path)) : currentProject;
+
+  // share (always, unless already in share)
+  if (!ctxDir.startsWith('share')) {
+    const it = document.createElement('div');
+    it.className = 'ctx-item';
+    it.innerHTML = '📂 share';
+    it.addEventListener('click', e => { e.stopPropagation(); closeContextMenu(); ctxCopyOrMove('share', mode); });
+    ctxSubmenu.appendChild(it);
+  }
+
+  // user home dirs (admins see all; normal users see only themselves if not already there)
+  const userRoots = allRoots.filter(r => r.path.startsWith('home/'));
+  const visibleUsers = isAdmin ? userRoots : userRoots.filter(r => !ctxDir.startsWith(r.path));
+  if (visibleUsers.length && !ctxDir.startsWith('share')) {
+    const sep = document.createElement('div'); sep.className = 'ctx-sep'; ctxSubmenu.appendChild(sep);
+  }
+  for (const r of visibleUsers) {
+    if (ctxDir.startsWith(r.path)) continue; // skip current home
+    const it = document.createElement('div');
+    it.className = 'ctx-item';
+    it.innerHTML = '👤 ' + r.name;
+    it.addEventListener('click', e => { e.stopPropagation(); closeContextMenu(); ctxCopyOrMove(r.path, mode); });
+    ctxSubmenu.appendChild(it);
+  }
+
+  if (!ctxSubmenu.children.length) return;
+
+  const rect = anchorEl.getBoundingClientRect();
+  ctxSubmenu.style.display = 'block';
+  const sw = ctxSubmenu.scrollWidth || 180;
+  const left = rect.right + 4 + sw > window.innerWidth ? rect.left - sw - 4 : rect.right + 4;
+  const top  = Math.min(rect.top, window.innerHeight - ctxSubmenu.scrollHeight - 8);
+  ctxSubmenu.style.left = left + 'px';
+  ctxSubmenu.style.top  = top  + 'px';
+}
+
+// ── Context menu – hidden upload input for "Upload hier"
+const ctxUploadInput = document.createElement('input');
+ctxUploadInput.type = 'file'; ctxUploadInput.multiple = true; ctxUploadInput.style.display = 'none';
+document.body.appendChild(ctxUploadInput);
+ctxUploadInput.addEventListener('change', async () => {
+  if (!ctxUploadInput.files.length) return;
+  const dir = ctxTarget ? (ctxTarget.type === 'dir' ? ctxTarget.path : dirname(ctxTarget.path)) : currentProject;
+  const fd = new FormData();
+  for (const f of ctxUploadInput.files) fd.append('file', f, f.name);
+  const res = await api(`/api/fs/${dir}`, { method: 'POST', body: fd });
+  if (res.ok) await loadFileTree(currentProject);
+  ctxUploadInput.value = '';
+});
+
+const ctxZipInput = document.createElement('input');
+ctxZipInput.type = 'file'; ctxZipInput.accept = '.zip'; ctxZipInput.style.display = 'none';
+document.body.appendChild(ctxZipInput);
+ctxZipInput.addEventListener('change', async () => {
+  if (!ctxZipInput.files.length) return;
+  const dir = ctxTarget ? (ctxTarget.type === 'dir' ? ctxTarget.path : dirname(ctxTarget.path)) : currentProject;
+  const fd = new FormData();
+  fd.append('file', ctxZipInput.files[0], ctxZipInput.files[0].name);
+  const res = await api(`/api/zip/${dir}`, { method: 'POST', body: fd });
+  if (res.ok) await loadFileTree(currentProject);
+  else { const d = await res.json().catch(() => ({})); alert(d.error || 'ZIP-Import fehlgeschlagen'); }
+  ctxZipInput.value = '';
+});
+
+document.getElementById('ctx-upload').addEventListener('click', () => ctxUploadInput.click());
+document.getElementById('ctx-zip-import').addEventListener('click', () => ctxZipInput.click());
+document.getElementById('ctx-zip-export').addEventListener('click', () => {
+  if (!ctxTarget) return;
+  const dir = ctxTarget.type === 'dir' ? ctxTarget.path : dirname(ctxTarget.path);
+  const a = document.createElement('a');
+  a.href = `/api/zip/${dir}`;
+  a.download = dir.split('/').pop() + '.zip';
+  a.click();
+});
+
+document.getElementById('ctx-delete').addEventListener('click', async () => {
+  if (!ctxTarget) return;
+  const ok = await showToast(`"${ctxTarget.name}" wirklich löschen?`);
+  if (!ok) return;
+  const res = await api(`/api/fs/${ctxTarget.path}`, { method: 'DELETE' });
+  if (res.ok) {
+    const ti = tabs.findIndex(t => t.path === ctxTarget.path || t.path.startsWith(ctxTarget.path + '/'));
+    if (ti >= 0) closeTab(ti);
+    await loadFileTree(currentProject);
+  }
+});
+
+document.getElementById('ctx-newfile').addEventListener('click', () => {
+  if (!ctxTarget) return;
+  const dir = ctxTarget.type === 'dir' ? ctxTarget.path : dirname(ctxTarget.path);
+  openNewItemDialog('file', dir);
+});
+
+document.getElementById('ctx-newdir').addEventListener('click', () => {
+  if (!ctxTarget) return;
+  const dir = ctxTarget.type === 'dir' ? ctxTarget.path : dirname(ctxTarget.path);
+  openNewItemDialog('dir', dir);
+});
+
+document.getElementById('ctx-rename').addEventListener('click', () => {
+  if (!ctxTarget) return;
+  const newName = window.prompt('Neuer Name:', ctxTarget.name);
+  if (!newName || newName === ctxTarget.name) return;
+  api(`/api/move/${ctxTarget.path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ destination: dirname(ctxTarget.path), new_name: newName }),
+  }).then(res => { if (res.ok) loadFileTree(currentProject); });
+});
+
+document.getElementById('ctx-copy').addEventListener('click', e => { e.stopPropagation(); showDestSubmenu(e.currentTarget, 'copy'); });
+document.getElementById('ctx-move').addEventListener('click', e => { e.stopPropagation(); showDestSubmenu(e.currentTarget, 'move'); });
+
+// ── New file / dir dialog ─────────────────────────────────────────────────────
+function openNewItemDialog(mode, basePath) {
+  newItemMode = mode;
+  newItemBasePath = basePath;
+  const inp = document.getElementById('newItemName');
+  document.getElementById('newItemTitle').textContent = mode === 'file' ? 'Neue Datei' : 'Neuer Ordner';
+  inp.placeholder = mode === 'file' ? 'dateiname.tex' : 'ordnername';
+  inp.value = '';
+  // Blur editor first so closeBrackets doesn't intercept the upcoming focus change
+  if (editorView) editorView.contentDOM.blur();
+  showOverlay('newItemOverlay');
+  setTimeout(() => inp.focus(), 50);
+}
+
+document.getElementById('newItemCancel').addEventListener('click', () => hideOverlay('newItemOverlay'));
+
+document.getElementById('newItemOk').addEventListener('click', async () => {
+  const name = document.getElementById('newItemName').value.trim();
+  if (!name) return;
+  const fullPath = newItemBasePath + '/' + name;
+
+  if (newItemMode === 'dir') {
+    await api(`/api/fs/${fullPath}?action=mkdir`, { method: 'POST' });
+  } else {
+    await api(`/api/fs/${fullPath}`, { method: 'PUT', body: '' });
+  }
+  hideOverlay('newItemOverlay');
+  await loadFileTree(currentProject);
+  if (newItemMode === 'file') openFile(fullPath, name);
+});
+
+document.getElementById('newItemName').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('newItemOk').click();
+});
+
+// ── Upload ────────────────────────────────────────────────────────────────────
+document.getElementById('uploadBtn').addEventListener('click', () => uploadInput.click());
+
+uploadInput.addEventListener('change', async () => {
+  const files = uploadInput.files;
+  if (!files.length) return;
+  const fd = new FormData();
+  for (const f of files) fd.append('file', f, f.name);
+  const res = await api(`/api/fs/${currentProject}`, { method: 'POST', body: fd });
+  if (res.ok) await loadFileTree(currentProject);
+  else alert('Upload fehlgeschlagen');
+  uploadInput.value = '';
+});
+
+// ── ZIP Im- / Export ─────────────────────────────────────────────────────────
+document.getElementById('zipExportBtn').addEventListener('click', () => {
+  if (!currentProject) return;
+  const a = document.createElement('a');
+  a.href = `/api/zip/${currentProject}`;
+  a.download = currentProject.split('/').pop() + '.zip';
+  a.click();
+});
+
+document.getElementById('zipImportBtn').addEventListener('click', () => {
+  document.getElementById('zipInput').click();
+});
+
+document.getElementById('zipInput').addEventListener('change', async () => {
+  const input = document.getElementById('zipInput');
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file, file.name);
+  const res = await api(`/api/zip/${currentProject}`, { method: 'POST', body: fd });
+  if (res.ok) await loadFileTree(currentProject);
+  else {
+    const data = await res.json().catch(() => ({}));
+    alert('ZIP-Import fehlgeschlagen: ' + (data.error || res.status));
+  }
+  input.value = '';
+});
+
+// ── File opening / tabs ───────────────────────────────────────────────────────
+async function openFile(path, name) {
+  // Check if already open
+  const existing = tabs.findIndex(t => t.path === path);
+  if (existing >= 0) { activateTab(existing); return; }
+
+  const res = await api(`/api/fs/${path}`);
+  if (!res.ok) { alert('Datei konnte nicht geladen werden'); return; }
+
+  const text = await res.text();
+  const tab = { path, name, content: text, modified: false };
+  tabs.push(tab);
+  activateTab(tabs.length - 1);
+}
+
+function activateTab(index) {
+  // Save current editor state
+  if (activeTabIndex >= 0 && editorView) {
+    tabs[activeTabIndex].content = editorView.state.doc.toString();
+    tabs[activeTabIndex].editorState = editorView.state;
+  }
+
+  activeTabIndex = index;
+  renderTabs();
+  renderActiveTreeItem();
+
+  const tab = tabs[index];
+  if (tab) {
+    bcSep.style.display = '';
+    bcFile.style.display = '';
+    bcFile.textContent = tab.name;
+    loadEditorContent(tab);
+  }
+}
+
+function loadEditorContent(tab) {
+  placeholder.style.display = 'none';
+
+  if (editorView) {
+    editorView.destroy();
+    editorView = null;
+  }
+
+  const isDark = html.getAttribute('data-theme') !== 'light';
+  const theme = isDark ? darkTheme : lightTheme;
+
+  let state;
+  if (tab.editorState) {
+    state = tab.editorState;
+  } else {
+    state = EditorState.create({
+      doc: tab.content,
+      extensions: [
+        basicSetup,
+        StreamLanguage.define(stex),
+        theme,
+        EditorView.updateListener.of(update => {
+          if (update.docChanged) {
+            const t = tabs[activeTabIndex];
+            if (t && !t.modified) {
+              t.modified = true;
+              renderTabs();
+            }
+            scheduleAutoCompile();
+          }
+        }),
+      ],
+    });
+  }
+
+  editorView = new EditorView({ state, parent: editorCont });
+}
+
+function recreateEditor(content) {
+  if (activeTabIndex < 0) return;
+  const tab = tabs[activeTabIndex];
+  if (!tab) return;
+  tab.editorState = null;
+  tab.content = content;
+  loadEditorContent(tab);
+}
+
+function renderTabs() {
+  tabBar.innerHTML = '';
+  tabs.forEach((tab, i) => {
+    const el = document.createElement('div');
+    el.className = 'tab' + (i === activeTabIndex ? ' active' : '') + (tab.modified ? ' modified' : '');
+    el.innerHTML = `<span>${tab.name}</span><span class="close-tab" data-i="${i}">✕</span>`;
+    el.addEventListener('click', e => {
+      if (e.target.classList.contains('close-tab')) return;
+      activateTab(i);
+    });
+    el.querySelector('.close-tab').addEventListener('click', e => {
+      e.stopPropagation();
+      closeTab(i);
+    });
+    tabBar.appendChild(el);
+  });
+}
+
+function closeTab(i) {
+  tabs.splice(i, 1);
+  if (activeTabIndex >= tabs.length) activeTabIndex = tabs.length - 1;
+  if (activeTabIndex < 0) {
+    if (editorView) { editorView.destroy(); editorView = null; }
+    placeholder.style.display = '';
+    bcSep.style.display = 'none';
+    bcFile.style.display = 'none';
+    renderTabs();
+    renderActiveTreeItem();
+    return;
+  }
+  activateTab(activeTabIndex);
+}
+
+function renderActiveTreeItem() {
+  document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
+  const tab = tabs[activeTabIndex];
+  if (tab) {
+    const el = document.querySelector(`.tree-item[data-path="${tab.path}"]`);
+    if (el) el.classList.add('active');
+  }
+}
+
+// ── Save ──────────────────────────────────────────────────────────────────────
+async function saveCurrentFile() {
+  if (activeTabIndex < 0 || !editorView) return;
+  const tab = tabs[activeTabIndex];
+  const content = editorView.state.doc.toString();
+  const res = await api(`/api/fs/${tab.path}`, {
+    method: 'PUT',
+    body: content,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+  });
+  if (res.ok) {
+    tab.content = content;
+    tab.modified = false;
+    renderTabs();
+  }
+}
+
+// ── Auto-compile ──────────────────────────────────────────────────────────────
+function scheduleAutoCompile() {
+  if (!autoCompile) return;
+  clearTimeout(autoCompileTimer);
+  autoCompileTimer = setTimeout(async () => {
+    await saveCurrentFile();
+    await runCompile();
+  }, 1000);
+}
+
+autoToggle.addEventListener('click', () => {
+  autoCompile = !autoCompile;
+  autoToggle.classList.toggle('active', autoCompile);
+  autoToggle.title = autoCompile ? 'Auto-Compile: AN' : 'Auto-Compile: AUS';
+});
+
+// ── Compile ───────────────────────────────────────────────────────────────────
+async function runCompile() {
+  // Compile the directory of the active tab, fall back to current directory
+  const activeTab = activeTabIndex >= 0 ? tabs[activeTabIndex] : null;
+  const compileTarget = activeTab ? activeTab.path : currentProject;
+  if (!compileTarget) return;
+
+  const texFile = activeTab ? activeTab.path.split('/').pop() : 'main.tex';
+  const compileDir = activeTab ? dirname(activeTab.path) : currentProject;
+  termLog.innerHTML = `<span class="run">$ tectonic ${activeTab ? activeTab.path : compileTarget}</span>`;
+
+  statusDot.className = 'running';
+  compileDur.textContent = '…';
+  compileBtn.disabled = true;
+
+  try {
+    const res = await api(`/api/compile/${compileTarget}`, { method: 'POST' });
+    const result = await res.json();
+
+    statusDot.className = result.ok ? 'ok' : 'err';
+    compileDur.textContent = result.duration_ms + 'ms';
+
+    if (result.ok) {
+      termLog.innerHTML = `<span class="ok">✓ ${compileDir}/${texFile} (${result.duration_ms}ms)</span>`;
+    } else {
+      termLog.innerHTML = `<span class="err">✗ ${compileDir}/${texFile} — ${result.errors.length} Fehler (${result.duration_ms}ms)</span>`;
+    }
+
+    renderProblems(result.errors, result.warnings);
+
+    if (result.ok) {
+      currentPdfPath = compileTarget; // file path → serve_pdf uses matching .pdf
+      await loadPdf();
+    }
+  } catch (e) {
+    statusDot.className = 'err';
+    compileDur.textContent = 'Fehler';
+    termLog.innerHTML = `<span class="err">✗ Verbindungsfehler</span>`;
+  } finally {
+    compileBtn.disabled = false;
+  }
+}
+
+compileBtn.addEventListener('click', async () => {
+  await saveCurrentFile();
+  await runCompile();
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', async e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    await saveCurrentFile();
+    if (autoCompile) await runCompile();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    await saveCurrentFile();
+    await runCompile();
+  }
+});
+
+// ── Problems panel ────────────────────────────────────────────────────────────
+
+function renderProblems(errors, warnings) {
+  const total = errors.length + warnings.length;
+  problemsCnt.textContent = total ? `${errors.length} Fehler, ${warnings.length} Warnungen` : 'Keine Probleme';
+  problemsBody.innerHTML = '';
+  for (const e of errors) appendProblem(e, 'error');
+  for (const w of warnings) appendProblem(w, 'warning');
+}
+
+function appendProblem(item, type) {
+  const el = document.createElement('div');
+  el.className = 'problem-item';
+  const loc = item.file ? `${item.file}:${item.line ?? '?'}` : '';
+  el.innerHTML = `<span class="ptype ${type}">${type}</span><span class="ploc">${loc}</span><span class="pmsg">${item.message}</span>`;
+  el.addEventListener('click', () => {
+    if (item.line && editorView) {
+      // Jump to line
+      const line = editorView.state.doc.line(Math.min(item.line, editorView.state.doc.lines));
+      editorView.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
+      editorView.focus();
+    }
+  });
+  problemsBody.appendChild(el);
+}
+
+// ── PDF viewer ────────────────────────────────────────────────────────────────
+async function loadPdf() {
+  if (!currentPdfPath) return;
+  pdfEmpty.style.display = 'none';
+
+  try {
+    const url = `/api/pdf/${currentPdfPath}?t=${Date.now()}`;
+    const task = pdfjsLib.getDocument(url);
+    pdfDoc = await task.promise;
+    pageCount.textContent = `/ ${pdfDoc.numPages}`;
+    pageInput.max = pdfDoc.numPages;
+    await renderAllPages();
+  } catch (e) {
+    console.error('PDF load error', e);
+    pdfEmpty.style.display = '';
+    pdfEmpty.textContent = 'PDF konnte nicht geladen werden';
+  }
+}
+
+async function renderAllPages() {
+  if (!pdfDoc) return;
+  pdfContainer.innerHTML = '';
+  for (let p = 1; p <= pdfDoc.numPages; p++) {
+    const page = await pdfDoc.getPage(p);
+    const viewport = page.getViewport({ scale: pdfScale });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    pdfContainer.appendChild(canvas);
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+  }
+}
+
+document.getElementById('prevPage').addEventListener('click', () => {
+  const v = parseInt(pageInput.value, 10);
+  if (v > 1) { pageInput.value = v - 1; scrollToPage(v - 1); }
+});
+document.getElementById('nextPage').addEventListener('click', () => {
+  const v = parseInt(pageInput.value, 10);
+  if (pdfDoc && v < pdfDoc.numPages) { pageInput.value = v + 1; scrollToPage(v + 1); }
+});
+pageInput.addEventListener('change', () => scrollToPage(parseInt(pageInput.value, 10)));
+document.getElementById('downloadPdf').addEventListener('click', () => {
+  if (!currentPdfPath) return;
+  const activeTab = activeTabIndex >= 0 ? tabs[activeTabIndex] : null;
+  const baseName = activeTab
+    ? activeTab.path.split('/').pop().replace(/\.tex$/i, '')
+    : currentPdfPath.split('/').pop();
+  const a = document.createElement('a');
+  a.href = `/api/pdf/${currentPdfPath}`;
+  a.download = baseName + '.pdf';
+  a.click();
+});
+
+function scrollToPage(n) {
+  const canvases = pdfContainer.querySelectorAll('canvas');
+  if (canvases[n - 1]) canvases[n - 1].scrollIntoView({ behavior: 'smooth' });
+}
+
+zoomSel.addEventListener('change', async () => {
+  pdfScale = parseFloat(zoomSel.value);
+  if (pdfDoc) await renderAllPages();
+});
+
+// ── User management ───────────────────────────────────────────────────────────
+settingsBtn.addEventListener('click', async () => {
+  await loadUsers();
+  showOverlay('usersOverlay');
+});
+document.getElementById('closeUsersBtn').addEventListener('click', () => hideOverlay('usersOverlay'));
+
+async function loadUsers() {
+  const res = await api('/api/users');
+  if (!res.ok) return;
+  const users = await res.json();
+  const list = document.getElementById('userList');
+  list.innerHTML = '';
+
+  for (const u of users) {
+    const row = document.createElement('div');
+    row.className = 'user-row';
+    const roleClass = u.role === 'superadmin' ? 'superadmin' : u.role === 'admin' ? 'admin' : '';
+    row.innerHTML = `
+      <span class="uname">${u.username}</span>
+      <span class="urole ${roleClass}">${u.role}</span>
+    `;
+
+    // Edit button
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn btn-secondary';
+    editBtn.style.padding = '3px 8px';
+    editBtn.style.fontSize = '12px';
+    editBtn.textContent = 'Bearbeiten';
+    editBtn.addEventListener('click', () => openEditUser(u));
+    row.appendChild(editBtn);
+
+    // Delete button (superadmin only, not self)
+    if (currentUser.role === 'superadmin' && u.username !== currentUser.username) {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn btn-danger';
+      delBtn.style.padding = '3px 8px';
+      delBtn.style.fontSize = '12px';
+      delBtn.textContent = 'Löschen';
+      delBtn.addEventListener('click', async () => {
+        const ok = await confirm(`Benutzer "${u.username}" wirklich löschen?`);
+        if (!ok) return;
+        const res = await api(`/api/users/${u.username}`, { method: 'DELETE' });
+        if (res.ok) await loadUsers();
+        else alert('Löschen fehlgeschlagen');
+      });
+      row.appendChild(delBtn);
+    }
+    list.appendChild(row);
+  }
+}
+
+document.getElementById('createUserBtn').addEventListener('click', async () => {
+  const username = document.getElementById('newUsername').value.trim();
+  const password = document.getElementById('newPassword').value;
+  const role = document.getElementById('newRole').value;
+  const msgEl = document.getElementById('userMsg');
+
+  const res = await api('/api/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password, role }),
+  });
+
+  msgEl.classList.remove('hidden', 'error', 'success');
+  if (res.ok) {
+    msgEl.className = 'msg success';
+    msgEl.textContent = `Benutzer "${username}" erstellt.`;
+    document.getElementById('newUsername').value = '';
+    document.getElementById('newPassword').value = '';
+    await loadUsers();
+  } else {
+    const data = await res.json().catch(() => ({}));
+    msgEl.className = 'msg error';
+    msgEl.textContent = data.error || 'Fehler beim Erstellen';
+  }
+});
+
+function openEditUser(u) {
+  document.getElementById('editUsername').textContent = u.username;
+  document.getElementById('editPassword').value = '';
+  document.getElementById('editRole').value = u.role;
+
+  // Show role field only for superadmins editing others
+  const editRoleGroup = document.getElementById('editRoleGroup');
+  editRoleGroup.style.display =
+    currentUser.role === 'superadmin' && u.username !== currentUser.username ? '' : 'none';
+
+  document.getElementById('editMsg').className = 'msg hidden';
+  showOverlay('editUserOverlay');
+
+  document.getElementById('editUserSave').onclick = async () => {
+    const password = document.getElementById('editPassword').value || undefined;
+    const role = editRoleGroup.style.display === 'none' ? undefined : document.getElementById('editRole').value;
+    const body = {};
+    if (password) body.password = password;
+    if (role) body.role = role;
+
+    const res = await api(`/api/users/${u.username}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const msgEl = document.getElementById('editMsg');
+    msgEl.classList.remove('hidden', 'error', 'success');
+    if (res.ok) {
+      msgEl.className = 'msg success';
+      msgEl.textContent = 'Gespeichert.';
+      await loadUsers();
+      setTimeout(() => hideOverlay('editUserOverlay'), 700);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      msgEl.className = 'msg error';
+      msgEl.textContent = data.error || 'Fehler';
+    }
+  };
+}
+document.getElementById('editUserCancel').addEventListener('click', () => hideOverlay('editUserOverlay'));
+
+// ── Logout ────────────────────────────────────────────────────────────────────
+logoutBtn.addEventListener('click', async () => {
+  await api('/auth/logout', { method: 'POST' });
+  window.location.href = '/login';
+});
+
+// ── Close overlays on backdrop click ─────────────────────────────────────────
+document.querySelectorAll('.overlay').forEach(ov => {
+  ov.addEventListener('click', e => {
+    if (e.target === ov) ov.classList.add('hidden');
+  });
+});
+
+// ── Toast confirm ─────────────────────────────────────────────────────────────
+let toastResolve = null;
+const toast = document.getElementById('toast');
+document.getElementById('toastConfirm').addEventListener('click', () => { toast.classList.remove('show'); toastResolve?.(true); });
+document.getElementById('toastCancel').addEventListener('click',  () => { toast.classList.remove('show'); toastResolve?.(false); });
+
+function showToast(msg) {
+  document.getElementById('toastMsg').textContent = msg;
+  toast.classList.add('show');
+  return new Promise(res => { toastResolve = res; });
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+init().catch(console.error);
+</script>
+</body>
+</html>

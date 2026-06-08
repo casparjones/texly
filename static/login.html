@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Texly – Anmelden</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root,
+    [data-theme="dark"] {
+      --accent:       #3b82f6;
+      --accent-hover: #2563eb;
+      --accent-soft:  rgba(59,130,246,.12);
+      --accent-border:rgba(59,130,246,.28);
+      --bg-0:         #0b0c0f;
+      --bg-1:         #101216;
+      --bg-2:         #16181d;
+      --bg-3:         #1e2128;
+      --border:       #2a2d35;
+      --text-0:       #f0f2f5;
+      --text-1:       #9aa3b2;
+      --text-2:       #5c6577;
+      --danger:       #ef4444;
+      --danger-soft:  rgba(239,68,68,.12);
+      --danger-border:rgba(239,68,68,.3);
+      --green:        #22c55e;
+      --green-soft:   rgba(34,197,94,.10);
+      --green-border: rgba(34,197,94,.28);
+      --shadow:       0 8px 32px rgba(0,0,0,.45);
+    }
+    [data-theme="light"] {
+      --bg-0:         #f2f4f7;
+      --bg-1:         #ffffff;
+      --bg-2:         #eef0f4;
+      --bg-3:         #e4e7ed;
+      --border:       #d1d5db;
+      --text-0:       #111827;
+      --text-1:       #4b5563;
+      --text-2:       #9ca3af;
+      --shadow:       0 8px 32px rgba(0,0,0,.10);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-0); color: var(--text-0);
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    }
+
+    /* theme btn */
+    .theme-btn {
+      position: fixed; top: 14px; right: 14px;
+      background: var(--bg-2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 7px 9px; cursor: pointer;
+      color: var(--text-1); font-size: 17px; line-height: 1;
+      transition: background .15s, color .15s;
+    }
+    .theme-btn:hover { background: var(--bg-3); color: var(--text-0); }
+
+    /* card */
+    .card {
+      background: var(--bg-1); border: 1px solid var(--border);
+      border-radius: 16px; padding: 38px 34px; width: 360px;
+      box-shadow: var(--shadow);
+    }
+
+    /* brand */
+    .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+    .brand-mark {
+      width: 32px; height: 32px; flex-shrink: 0;
+      background: linear-gradient(150deg, #3b82f6 0%, #6aa6ff 100%);
+      border-radius: 8px; display: grid; place-items: center;
+      font-size: 16px; font-weight: 700; color: #fff;
+      box-shadow: 0 2px 8px rgba(59,130,246,.38);
+    }
+    .brand-name { font-size: 20px; font-weight: 600; }
+    .brand-sub  { font-size: 12px; color: var(--text-2); margin-bottom: 26px; }
+
+    /* info banner */
+    .banner {
+      display: flex; align-items: flex-start; gap: 9px;
+      background: var(--accent-soft); border: 1px solid var(--accent-border);
+      border-radius: 9px; padding: 11px 13px; margin-bottom: 20px;
+      font-size: 13px; color: var(--accent); line-height: 1.45;
+    }
+    .banner svg { flex-shrink: 0; margin-top: 1px; }
+
+    /* form */
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    label  { font-size: 13px; font-weight: 500; color: var(--text-1); }
+    label small { font-weight: 400; color: var(--text-2); }
+
+    input, select {
+      background: var(--bg-2); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text-0); font-family: inherit;
+      font-size: 14px; padding: 10px 12px; width: 100%;
+      transition: border-color .15s, box-shadow .15s; outline: none;
+      appearance: none;
+    }
+    input:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(59,130,246,.18);
+    }
+
+    .btn {
+      background: var(--accent); border: none; border-radius: 8px;
+      color: #fff; cursor: pointer; font-family: inherit; font-size: 14px;
+      font-weight: 500; padding: 11px; width: 100%; margin-top: 6px;
+      transition: background .15s, transform .1s;
+    }
+    .btn:hover   { background: var(--accent-hover); }
+    .btn:active  { transform: scale(.98); }
+    .btn:disabled{ opacity: .55; cursor: not-allowed; transform: none; }
+
+    .msg { display: none; border-radius: 8px; font-size: 13px; margin-top: 12px; padding: 10px 12px; }
+    .msg.err { display: block; background: var(--danger-soft); border: 1px solid var(--danger-border); color: var(--danger); }
+    .msg.ok  { display: block; background: var(--green-soft);  border: 1px solid var(--green-border);  color: var(--green); }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <button class="theme-btn" id="themeBtn">🌙</button>
+
+  <div class="card">
+    <div class="brand">
+      <div class="brand-mark">T</div>
+      <div class="brand-name">Texly</div>
+    </div>
+    <div class="brand-sub">Self-hosted LaTeX Editor</div>
+
+    <!-- ── LOGIN ─────────────────────────────────────────────── -->
+    <form id="loginForm">
+      <div class="field">
+        <label for="lUser">Benutzername</label>
+        <input id="lUser" type="text" autocomplete="username" autofocus required placeholder="benutzername" />
+      </div>
+      <div class="field">
+        <label for="lPass">Passwort</label>
+        <input id="lPass" type="password" autocomplete="current-password" required placeholder="••••••••" />
+      </div>
+      <button class="btn" id="lBtn" type="submit">Anmelden</button>
+      <div class="msg" id="lMsg"></div>
+    </form>
+
+    <!-- ── SETUP / REGISTER (nur wenn needs_setup=true) ─────── -->
+    <form id="regForm" class="hidden">
+      <div class="banner">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        Erster Start — lege den Administrator-Account an. Weitere User kannst du danach im Editor verwalten.
+      </div>
+      <div class="field">
+        <label for="rUser">Benutzername</label>
+        <input id="rUser" type="text" autocomplete="username" required placeholder="benutzername"
+          pattern="[a-zA-Z0-9_\-]{2,32}" title="2–32 Zeichen, nur Buchstaben, Zahlen, _ und -" />
+      </div>
+      <div class="field">
+        <label for="rPass">Passwort <small>(min. 6 Zeichen)</small></label>
+        <input id="rPass" type="password" autocomplete="new-password" required placeholder="••••••••" minlength="6" />
+      </div>
+      <button class="btn" id="rBtn" type="submit">Administrator-Account anlegen</button>
+      <div class="msg" id="rMsg"></div>
+    </form>
+  </div>
+
+  <script>
+    // ── Theme ────────────────────────────────────────────────────────────────────
+    const root = document.documentElement;
+    const themeBtn = document.getElementById('themeBtn');
+    function applyTheme(t) {
+      root.setAttribute('data-theme', t);
+      themeBtn.textContent = t === 'dark' ? '🌙' : '☀️';
+      try { localStorage.setItem('texly-theme', t); } catch(e) {}
+    }
+    applyTheme((() => { try { return localStorage.getItem('texly-theme') || 'dark'; } catch(e) { return 'dark'; } })());
+    themeBtn.addEventListener('click', () => applyTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+
+    // ── Setup check ──────────────────────────────────────────────────────────────
+    (async () => {
+      try {
+        const { needs_setup } = await fetch('/api/setup').then(r => r.json());
+        if (needs_setup) {
+          document.getElementById('loginForm').classList.add('hidden');
+          document.getElementById('regForm').classList.remove('hidden');
+          document.getElementById('rUser').focus();
+        } else {
+          document.getElementById('lUser').focus();
+        }
+      } catch(e) { /* fallback: show login */ }
+    })();
+
+    // ── Login ────────────────────────────────────────────────────────────────────
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('lBtn');
+      const msg = document.getElementById('lMsg');
+      msg.className = 'msg';
+      btn.disabled = true; btn.textContent = 'Anmelden…';
+      try {
+        const res = await fetch('/auth/login', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: document.getElementById('lUser').value.trim(),
+            password: document.getElementById('lPass').value,
+          }),
+        });
+        if (res.ok) { window.location.href = '/app'; return; }
+        const d = await res.json().catch(() => ({}));
+        msg.textContent = res.status === 401 ? 'Falscher Benutzername oder Passwort.' : (d.error || 'Fehler.');
+        msg.className = 'msg err';
+      } catch(e) {
+        document.getElementById('lMsg').textContent = 'Netzwerkfehler – Server erreichbar?';
+        document.getElementById('lMsg').className = 'msg err';
+      } finally { btn.disabled = false; btn.textContent = 'Anmelden'; }
+    });
+
+    // ── Register (setup only) ─────────────────────────────────────────────────────
+    document.getElementById('regForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('rBtn');
+      const msg = document.getElementById('rMsg');
+      msg.className = 'msg';
+      btn.disabled = true; btn.textContent = 'Anlegen…';
+      const username = document.getElementById('rUser').value.trim();
+      const password = document.getElementById('rPass').value;
+      try {
+        const res = await fetch('/api/users', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, role: 'superadmin' }),
+        });
+        const d = await res.json().catch(() => ({}));
+        if (res.ok) {
+          msg.textContent = 'Account angelegt, wird eingeloggt…';
+          msg.className = 'msg ok';
+          const lr = await fetch('/auth/login', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+          });
+          if (lr.ok) { window.location.href = '/app'; return; }
+        }
+        msg.textContent = d.error || 'Fehler beim Anlegen.';
+        msg.className = 'msg err';
+      } catch(e) {
+        document.getElementById('rMsg').textContent = 'Netzwerkfehler.';
+        document.getElementById('rMsg').className = 'msg err';
+      } finally { btn.disabled = false; btn.textContent = 'Administrator-Account anlegen'; }
+    });
+  </script>
+</body>
+</html>

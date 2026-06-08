@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Texly — LaTeX Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet" />
+<style>
+/* ============ TOKENS ============ */
+:root {
+  --accent: #3b82f6;
+  --accent-strong: #2f6fe0;
+  --accent-soft: rgba(59,130,246,.14);
+  --accent-line: rgba(59,130,246,.40);
+  --green: #34d399;
+  --amber: #f5b549;
+  --red: #f1606b;
+  --radius: 7px;
+  --radius-sm: 5px;
+  --ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --serif: "Source Serif 4", "Times New Roman", Times, serif;
+}
+
+/* ---- DARK ---- */
+[data-theme="dark"] {
+  --bg-0: #0b0c0f;     /* app / top bar */
+  --bg-1: #101216;     /* sidebar, panels */
+  --bg-2: #131519;     /* editor */
+  --bg-3: #181b21;     /* hover / inactive tabs */
+  --bg-4: #1e222a;     /* active hover */
+  --border: #20242c;
+  --border-soft: #191c22;
+  --border-strong: #2b3038;
+  --text: #e7e9ee;
+  --text-dim: #9ba0aa;
+  --text-faint: #686d78;
+  --text-mute: #4d525c;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.28);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.35);
+  /* syntax */
+  --t-cmd: #6aa6ff;
+  --t-env: #c79bff;
+  --t-arg: #e7e9ee;
+  --t-brace: #6b7280;
+  --t-comment: #5d6470;
+  --t-math: #e6b96a;
+  --t-num: #f0936a;
+  --t-key: #4cc7b0;
+}
+
+/* ---- LIGHT ---- */
+[data-theme="light"] {
+  --bg-0: #f2f3f5;
+  --bg-1: #fafbfc;
+  --bg-2: #ffffff;
+  --bg-3: #eef0f3;
+  --bg-4: #e6e9ee;
+  --border: #e2e5ea;
+  --border-soft: #ebedf1;
+  --border-strong: #d4d8e0;
+  --text: #1a1d23;
+  --text-dim: #5c626d;
+  --text-faint: #888e99;
+  --text-mute: #aab0bb;
+  --shadow: 0 1px 2px rgba(20,24,32,.06), 0 10px 30px rgba(20,24,32,.08);
+  --shadow-sm: 0 1px 2px rgba(20,24,32,.07);
+  --accent-soft: rgba(59,130,246,.10);
+  --t-cmd: #2563eb;
+  --t-env: #8a3ffc;
+  --t-arg: #1a1d23;
+  --t-brace: #9aa0ab;
+  --t-comment: #9aa0ab;
+  --t-math: #b06d12;
+  --t-num: #c2410c;
+  --t-key: #0d9488;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--ui);
+  background: var(--bg-0);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+::selection { background: var(--accent-soft); }
+svg { display: block; }
+.ico { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ico-sm { width: 13px; height: 13px; }
+
+/* ============ APP SHELL ============ */
+.app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ---- TOP BAR ---- */
+.topbar {
+  height: 46px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 12px 0 14px;
+  background: var(--bg-0);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  z-index: 30;
+}
+.brand { display: flex; align-items: center; gap: 9px; padding-right: 4px; }
+.brand-mark {
+  width: 24px; height: 24px; border-radius: 6px;
+  background: linear-gradient(150deg, var(--accent) 0%, #6aa6ff 100%);
+  display: grid; place-items: center;
+  color: #fff; font-weight: 700; font-size: 13px;
+  box-shadow: 0 2px 6px rgba(59,130,246,.4), inset 0 1px 0 rgba(255,255,255,.25);
+  letter-spacing: -.02em;
+}
+.brand-name { font-weight: 600; font-size: 14px; letter-spacing: -.01em; }
+.brand-name b { color: var(--accent); font-weight: 600; }
+
+.topbar-sep { width: 1px; height: 22px; background: var(--border); margin: 0 2px; }
+.crumbs { display: flex; align-items: center; gap: 6px; color: var(--text-dim); font-size: 12.5px; }
+.crumbs b { color: var(--text); font-weight: 500; }
+.crumbs .sl { color: var(--text-mute); }
+
+.topbar-spacer { flex: 1; }
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+
+/* compile cluster */
+.compile-meta { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px rgba(52,211,153,.16); }
+.compile-meta .dur { color: var(--text-faint); }
+
+.toggle { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-dim); cursor: pointer; user-select: none; }
+.switch { width: 30px; height: 17px; border-radius: 9px; background: var(--accent); position: relative; transition: background .15s; flex: none; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 15px; width: 13px; height: 13px; border-radius: 50%; background: #fff; transition: left .15s; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.switch.off { background: var(--border-strong); }
+.switch.off::after { left: 2px; }
+
+.btn-compile {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 30px; padding: 0 11px 0 12px;
+  background: var(--accent); color: #fff;
+  border: none; border-radius: var(--radius-sm);
+  font-family: var(--ui); font-weight: 550; font-size: 12.5px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.18);
+  transition: background .13s, transform .05s;
+}
+.btn-compile:hover { background: var(--accent-strong); }
+.btn-compile:active { transform: translateY(1px); }
+.btn-compile kbd {
+  font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+  background: rgba(255,255,255,.18); color: rgba(255,255,255,.9);
+  padding: 2px 5px; border-radius: 4px; line-height: 1;
+}
+
+.icon-btn {
+  width: 30px; height: 30px; display: grid; place-items: center;
+  background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm);
+  color: var(--text-dim); cursor: pointer; transition: .12s;
+}
+.icon-btn:hover { background: var(--bg-3); color: var(--text); }
+
+/* ============ BODY: 3 COLUMNS ============ */
+.body { flex: 1; display: flex; min-height: 0; }
+
+/* divider */
+.divider {
+  width: 1px; flex: none; background: var(--border);
+  position: relative; cursor: col-resize;
+}
+.divider::after {
+  content: ""; position: absolute; inset: 0 -3px; 
+}
+.divider:hover { background: var(--accent-line); }
+
+/* ---- SIDEBAR ---- */
+.sidebar { width: 248px; flex: none; background: var(--bg-1); display: flex; flex-direction: column; min-height: 0; }
+
+.proj-switch {
+  display: flex; align-items: center; gap: 9px;
+  margin: 9px 9px 4px; padding: 7px 9px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-2); cursor: pointer; transition: .12s;
+}
+.proj-switch:hover { border-color: var(--border-strong); background: var(--bg-3); }
+.proj-glyph { width: 22px; height: 22px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex: none; }
+.proj-info { flex: 1; min-width: 0; }
+.proj-label { font-size: 9.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-faint); font-weight: 600; }
+.proj-name { font-size: 12.5px; font-weight: 550; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.proj-switch .chev { color: var(--text-faint); }
+
+.tree-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px 5px; 
+}
+.tree-head span { font-size: 9.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-faint); font-weight: 650; }
+.tree-head .acts { display: flex; gap: 2px; }
+.tree-head .acts button { width: 20px; height: 20px; display: grid; place-items: center; border: none; background: transparent; color: var(--text-faint); border-radius: 4px; cursor: pointer; }
+.tree-head .acts button:hover { background: var(--bg-3); color: var(--text-dim); }
+
+.tree { flex: 1; overflow-y: auto; padding: 0 7px 7px; }
+.tree::-webkit-scrollbar { width: 9px; }
+.tree::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 6px; border: 3px solid var(--bg-1); }
+.tree::-webkit-scrollbar-track { background: transparent; }
+
+.row {
+  display: flex; align-items: center; gap: 7px;
+  height: 26px; padding: 0 8px; border-radius: 5px;
+  font-size: 12.5px; color: var(--text-dim); cursor: pointer;
+  white-space: nowrap; position: relative;
+}
+.row:hover { background: var(--bg-3); color: var(--text); }
+.row.active { background: var(--accent-soft); color: var(--text); }
+.row.active::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 2px; border-radius: 2px; background: var(--accent); }
+.row .twirl { color: var(--text-mute); width: 12px; display: flex; }
+.row .fi { flex: none; }
+.row .nm { overflow: hidden; text-overflow: ellipsis; }
+.row.indent { padding-left: 22px; }
+.row.indent2 { padding-left: 34px; }
+.fi-tex { color: var(--accent); }
+.fi-bib { color: var(--amber); }
+.fi-img { color: var(--t-key); }
+.fi-sty { color: var(--t-env); }
+.fi-folder { color: var(--text-faint); }
+.modified { margin-left: auto; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; }
+
+.sidebar-foot { flex: none; padding: 8px; border-top: 1px solid var(--border-soft); }
+.btn-add {
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 7px;
+  height: 30px; background: transparent; color: var(--text-dim);
+  border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
+  font-family: var(--ui); font-size: 12px; font-weight: 500; cursor: pointer; transition: .12s;
+}
+.btn-add:hover { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+
+/* ---- CENTER: EDITOR ---- */
+.center { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; background: var(--bg-2); }
+
+.tabbar { height: 36px; flex: none; display: flex; align-items: stretch; background: var(--bg-1); border-bottom: 1px solid var(--border); overflow-x: auto; }
+.tabbar::-webkit-scrollbar { height: 0; }
+.tab {
+  display: flex; align-items: center; gap: 7px;
+  padding: 0 11px 0 12px; font-size: 12.5px; color: var(--text-dim);
+  border-right: 1px solid var(--border); cursor: pointer; position: relative;
+  background: var(--bg-1); white-space: nowrap; transition: .1s;
+}
+.tab:hover { background: var(--bg-3); color: var(--text); }
+.tab.active { background: var(--bg-2); color: var(--text); }
+.tab.active::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--accent); }
+.tab .x { width: 16px; height: 16px; display: grid; place-items: center; border-radius: 4px; color: var(--text-faint); opacity: 0; }
+.tab:hover .x, .tab.active .x { opacity: 1; }
+.tab .x:hover { background: var(--bg-4); color: var(--text); }
+.tab .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+.editor-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.editor {
+  flex: 1; min-height: 0; overflow: auto;
+  font-family: var(--mono); font-size: 13px; line-height: 21px;
+  padding: 6px 0 40px;
+}
+.editor::-webkit-scrollbar { width: 11px; height: 11px; }
+.editor::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 7px; border: 3px solid var(--bg-2); }
+.editor::-webkit-scrollbar-track { background: transparent; }
+
+.eln {
+  display: flex; align-items: flex-start; min-height: 21px;
+}
+.eln:hover { background: var(--bg-3); }
+.eln.cursor { background: var(--bg-3); }
+.eln.cursor .ln-no { color: var(--text-dim); }
+.ln-no {
+  width: 48px; flex: none; text-align: right; padding-right: 14px;
+  color: var(--text-mute); user-select: none; font-size: 12px;
+  position: relative;
+}
+.eln.warn .ln-no::before { content: ""; position: absolute; left: 6px; top: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--amber); }
+.ln-code { flex: 1; white-space: pre; padding-right: 24px; color: var(--t-arg); }
+.eln.warn .ln-code { box-shadow: inset 0 -1px 0 0 rgba(245,181,73,.35); }
+
+/* syntax tokens */
+.cmd { color: var(--t-cmd); }
+.env { color: var(--t-env); }
+.br { color: var(--t-brace); }
+.cm { color: var(--t-comment); font-style: italic; }
+.mt { color: var(--t-math); }
+.nu { color: var(--t-num); }
+.ky { color: var(--t-key); }
+
+/* problems panel */
+.problems { flex: none; border-top: 1px solid var(--border); background: var(--bg-1); display: flex; flex-direction: column; max-height: 190px; }
+.problems.collapsed { max-height: 33px; }
+.prob-head {
+  height: 33px; flex: none; display: flex; align-items: center; gap: 10px;
+  padding: 0 12px; cursor: pointer; user-select: none;
+}
+.prob-head:hover { background: var(--bg-3); }
+.prob-head .ttl { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); display: flex; align-items: center; gap: 7px; }
+.prob-head .chev { color: var(--text-faint); transition: transform .15s; }
+.problems.collapsed .prob-head .chev { transform: rotate(-90deg); }
+.counts { display: flex; align-items: center; gap: 13px; margin-left: auto; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.count { display: flex; align-items: center; gap: 5px; color: var(--text-faint); }
+.count b { color: var(--text-dim); font-weight: 600; }
+.count .d { width: 7px; height: 7px; border-radius: 2px; }
+.count.err .d { background: var(--red); } .count.err.zero { opacity: .5; }
+.count.wrn .d { background: var(--amber); }
+
+.prob-list { flex: 1; overflow-y: auto; padding: 2px 0 6px; }
+.prob-list::-webkit-scrollbar { width: 9px; }
+.prob-list::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 6px; border: 3px solid var(--bg-1); }
+.prob {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 6px 14px; cursor: pointer; font-size: 12px; border-left: 2px solid transparent;
+}
+.prob:hover { background: var(--bg-3); border-left-color: var(--amber); }
+.prob .pi { margin-top: 1px; flex: none; }
+.prob.w .pi { color: var(--amber); }
+.prob.e .pi { color: var(--red); }
+.prob-body { min-width: 0; }
+.prob-msg { color: var(--text); }
+.prob-msg code { font-family: var(--mono); font-size: 11px; background: var(--bg-3); padding: 1px 5px; border-radius: 4px; color: var(--text-dim); }
+.prob-loc { color: var(--text-faint); font-size: 11px; margin-top: 2px; font-family: var(--mono); }
+.prob-loc a { color: var(--accent); text-decoration: none; }
+
+/* ---- RIGHT: PDF ---- */
+.preview { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; background: var(--bg-1); }
+.pdf-toolbar {
+  height: 36px; flex: none; display: flex; align-items: center; gap: 4px;
+  padding: 0 8px 0 12px; border-bottom: 1px solid var(--border); background: var(--bg-1);
+}
+.pdf-toolbar .doc-name { font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 7px; }
+.pdf-toolbar .doc-name .fi-tex { color: var(--red); }
+.pdf-tb-spacer { flex: 1; }
+.pager { display: flex; align-items: center; gap: 3px; font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.pager .pg-input { width: 30px; height: 22px; text-align: center; background: var(--bg-2); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: var(--mono); font-size: 11.5px; }
+.pager .of { color: var(--text-faint); }
+.zoom { display: flex; align-items: center; gap: 2px; }
+.zoom .lvl { font-size: 12px; color: var(--text-dim); min-width: 38px; text-align: center; font-variant-numeric: tabular-nums; }
+.tb-btn { width: 26px; height: 26px; display: grid; place-items: center; border: none; background: transparent; color: var(--text-dim); border-radius: 5px; cursor: pointer; }
+.tb-btn:hover { background: var(--bg-3); color: var(--text); }
+.tb-sep { width: 1px; height: 18px; background: var(--border); margin: 0 5px; }
+
+.pdf-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 0 40px; display: flex; flex-direction: column; align-items: center; gap: 18px; background: var(--bg-0); }
+.pdf-scroll::-webkit-scrollbar { width: 11px; }
+.pdf-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 7px; border: 3px solid var(--bg-0); }
+
+/* the paper */
+.page {
+  width: 480px; background: #fff; color: #15171c;
+  box-shadow: 0 1px 3px rgba(0,0,0,.22), 0 14px 40px rgba(0,0,0,.3);
+  padding: 46px 52px; font-family: var(--serif); border-radius: 1px;
+}
+.page2 { min-height: 300px; }
+.pp-title { text-align: center; font-size: 16px; font-weight: 600; line-height: 1.3; letter-spacing: -.005em; }
+.pp-authors { text-align: center; font-size: 11px; margin-top: 11px; color: #2b2e35; }
+.pp-date { text-align: center; font-size: 10px; margin-top: 6px; color: #555a63; }
+.pp-abs-h { text-align: center; font-size: 10.5px; font-weight: 600; margin: 22px 0 6px; }
+.pp-abstract { font-size: 9.7px; line-height: 1.5; text-align: justify; color: #1f2229; margin: 0 14px; }
+.pp-sec { font-size: 11.5px; font-weight: 600; margin: 20px 0 6px; }
+.pp-body { font-size: 9.7px; line-height: 1.56; text-align: justify; text-indent: 14px; color: #1f2229; }
+.pp-body.noindent { text-indent: 0; }
+.pp-eq { text-align: center; margin: 13px 0; font-size: 10.5px; font-style: italic; position: relative; }
+.pp-eq .eqno { position: absolute; right: 0; font-style: normal; color: #444; }
+.pp-eq i { font-style: italic; }
+.pp-fig { margin: 14px 0; }
+.pp-fig .ph { height: 96px; background: repeating-linear-gradient(135deg, #eef0f3 0 8px, #f6f7f9 8px 16px); border: 1px solid #e2e5ea; display: grid; place-items: center; color: #9aa0ab; font-family: var(--mono); font-size: 9px; }
+.pp-fig .cap { font-size: 8.6px; color: #3a3d44; margin-top: 6px; text-align: center; }
+.pp-fig .cap b { font-weight: 600; }
+sub, sup { font-size: .72em; }
+.math-var { font-style: italic; font-family: var(--serif); }
+.pp-refs-h { font-size: 11.5px; font-weight: 600; margin: 18px 0 7px; }
+.pp-ref { font-size: 8.8px; line-height: 1.5; color: #2b2e35; padding-left: 16px; text-indent: -16px; margin-bottom: 4px; }
+
+/* page number badge */
+.page-badge { font-size: 10px; color: var(--text-faint); font-family: var(--mono); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ TOP BAR ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">T</div>
+      <div class="brand-name">Tex<b>ly</b></div>
+    </div>
+    <div class="topbar-sep"></div>
+    <nav class="crumbs">
+      <span>diffusion-priors</span>
+      <span class="sl">/</span>
+      <b>main.tex</b>
+    </nav>
+
+    <div class="topbar-spacer"></div>
+
+    <div class="topbar-right">
+      <div class="compile-meta">
+        <span class="status-dot" title="Erfolgreich kompiliert"></span>
+        <span>Kompiliert</span>
+        <span class="dur">· 1,84&thinsp;s</span>
+      </div>
+      <label class="toggle" id="autoToggle" title="Automatisch kompilieren beim Speichern">
+        <span class="switch" id="autoSwitch"></span>
+        <span>Auto</span>
+      </label>
+      <button class="btn-compile">
+        <svg class="ico ico-sm" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>
+        <span>Compile</span>
+        <kbd>⌘↵</kbd>
+      </button>
+      <div class="topbar-sep"></div>
+      <button class="icon-btn" id="themeBtn" title="Theme wechseln">
+        <svg class="ico" id="themeIco" viewBox="0 0 24 24"></svg>
+      </button>
+      <button class="icon-btn" title="Einstellungen">
+        <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ BODY ============ -->
+  <div class="body">
+
+    <!-- ---- SIDEBAR ---- -->
+    <aside class="sidebar">
+      <div class="proj-switch">
+        <div class="proj-glyph">
+          <svg class="ico-sm ico" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+        </div>
+        <div class="proj-info">
+          <div class="proj-label">Projekt</div>
+          <div class="proj-name">diffusion-priors</div>
+        </div>
+        <svg class="ico ico-sm chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </div>
+
+      <div class="tree-head">
+        <span>Dateien</span>
+        <div class="acts">
+          <button title="Neuer Ordner"><svg class="ico-sm ico" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><line x1="12" y1="11" x2="12" y2="15"></line><line x1="10" y1="13" x2="14" y2="13"></line></svg></button>
+          <button title="Alle einklappen"><svg class="ico-sm ico" viewBox="0 0 24 24"><polyline points="4 9 8 5 12 9"></polyline><polyline points="4 15 8 19 12 15"></polyline></svg></button>
+        </div>
+      </div>
+
+      <div class="tree">
+        <!-- main.tex (active) -->
+        <div class="row active">
+          <span class="twirl"></span>
+          <svg class="ico-sm ico fi fi-tex" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          <span class="nm">main.tex</span>
+          <span class="modified" title="Ungespeicherte Änderungen"></span>
+        </div>
+
+        <!-- sections folder (open) -->
+        <div class="row">
+          <span class="twirl"><svg class="ico-sm ico" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+          <svg class="ico-sm ico fi fi-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+          <span class="nm">sections</span>
+        </div>
+        <div class="row indent">
+          <svg class="ico-sm ico fi fi-tex" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          <span class="nm">introduction.tex</span>
+        </div>
+        <div class="row indent">
+          <svg class="ico-sm ico fi fi-tex" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          <span class="nm">method.tex</span>
+        </div>
+        <div class="row indent">
+          <svg class="ico-sm ico fi fi-tex" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          <span class="nm">experiments.tex</span>
+        </div>
+
+        <!-- figures folder (open) -->
+        <div class="row">
+          <span class="twirl"><svg class="ico-sm ico" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+          <svg class="ico-sm ico fi fi-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+          <span class="nm">figures</span>
+        </div>
+        <div class="row indent">
+          <svg class="ico-sm ico fi fi-img" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+          <span class="nm">architecture.png</span>
+        </div>
+        <div class="row indent">
+          <svg class="ico-sm ico fi fi-img" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+          <span class="nm">results.pdf</span>
+        </div>
+
+        <!-- root files -->
+        <div class="row">
+          <span class="twirl"></span>
+          <svg class="ico-sm ico fi fi-bib" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          <span class="nm">references.bib</span>
+        </div>
+        <div class="row">
+          <span class="twirl"></span>
+          <svg class="ico-sm ico fi fi-sty" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          <span class="nm">preamble.sty</span>
+        </div>
+      </div>
+
+      <div class="sidebar-foot">
+        <button class="btn-add">
+          <svg class="ico ico-sm" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Datei / Upload
+        </button>
+      </div>
+    </aside>
+
+    <div class="divider"></div>
+
+    <!-- ---- CENTER: EDITOR ---- -->
+    <section class="center">
+      <div class="tabbar">
+        <div class="tab active">
+          <svg class="ico-sm ico fi-tex" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          <span>main.tex</span>
+          <span class="dot" title="Ungespeichert"></span>
+        </div>
+        <div class="tab">
+          <svg class="ico-sm ico fi-tex" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          <span>introduction.tex</span>
+          <span class="x"><svg class="ico" viewBox="0 0 24 24" style="width:11px;height:11px"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></span>
+        </div>
+        <div class="tab">
+          <svg class="ico-sm ico fi-bib" style="color:var(--amber)" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          <span>references.bib</span>
+          <span class="x"><svg class="ico" viewBox="0 0 24 24" style="width:11px;height:11px"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></span>
+        </div>
+      </div>
+
+      <div class="editor-wrap">
+        <div class="editor" id="editor"><!-- lines injected by JS --></div>
+
+        <!-- problems -->
+        <div class="problems" id="problems">
+          <div class="prob-head" id="probHead">
+            <div class="ttl">
+              <svg class="ico ico-sm chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              Probleme
+            </div>
+            <div class="counts">
+              <span class="count err zero"><span class="d"></span><b>0</b> Errors</span>
+              <span class="count wrn"><span class="d"></span><b>2</b> Warnings</span>
+            </div>
+          </div>
+          <div class="prob-list">
+            <div class="prob w">
+              <svg class="ico ico-sm pi" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              <div class="prob-body">
+                <div class="prob-msg">Overfull <code>\hbox</code> (15.3pt too wide) in paragraph at lines 17–20</div>
+                <div class="prob-loc"><a href="#">main.tex:17</a> · LaTeX Warning</div>
+              </div>
+            </div>
+            <div class="prob w">
+              <svg class="ico ico-sm pi" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              <div class="prob-body">
+                <div class="prob-msg">Reference <code>fig:arch</code> on page 1 undefined</div>
+                <div class="prob-loc"><a href="#">main.tex:32</a> · run BibTeX, then recompile</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- ---- RIGHT: PDF PREVIEW ---- -->
+    <section class="preview">
+      <div class="pdf-toolbar">
+        <div class="doc-name">
+          <svg class="ico-sm ico fi-tex" style="color:var(--red)" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          main.pdf
+        </div>
+        <div class="pdf-tb-spacer"></div>
+        <div class="pager">
+          <button class="tb-btn" title="Vorherige Seite"><svg class="ico-sm ico" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+          <input class="pg-input" value="1" />
+          <span class="of">/ 8</span>
+          <button class="tb-btn" title="Nächste Seite"><svg class="ico-sm ico" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+        </div>
+        <div class="tb-sep"></div>
+        <div class="zoom">
+          <button class="tb-btn" title="Verkleinern"><svg class="ico-sm ico" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+          <span class="lvl">100%</span>
+          <button class="tb-btn" title="Vergrößern"><svg class="ico-sm ico" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+        </div>
+        <div class="tb-sep"></div>
+        <button class="tb-btn" title="Download PDF"><svg class="ico-sm ico" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>
+      </div>
+
+      <div class="pdf-scroll">
+        <!-- page 1 -->
+        <div class="page">
+          <div class="pp-title">Score-Based Diffusion Priors for<br />Ill-Posed Inverse Imaging Problems</div>
+          <div class="pp-authors">A. Mercer&nbsp;&nbsp;&nbsp; L. Nakamura&nbsp;&nbsp;&nbsp; R. Osei</div>
+          <div class="pp-date">Institute for Computational Imaging · June 8, 2026</div>
+
+          <div class="pp-abs-h">Abstract</div>
+          <div class="pp-abstract">We study score-based generative models as learned priors for ill-posed inverse problems. By coupling the reverse diffusion process with a measurement-consistency projection at every denoising step, we obtain reconstructions that are simultaneously data-faithful and perceptually sharp. Across deblurring, inpainting, and compressed-sensing MRI, the proposed sampler improves LPIPS by 18% over unconditional baselines without task-specific retraining.</div>
+
+          <div class="pp-sec">1&nbsp;&nbsp;Introduction</div>
+          <div class="pp-body noindent">Reconstructing a signal <span class="math-var">x</span> from noisy measurements <span class="math-var">y</span> = 𝒜<span class="math-var">x</span> + <span class="math-var">η</span> is fundamentally underdetermined: many candidate signals explain the same observation. Classical regularizers encode hand-crafted assumptions, whereas a learned prior captures the statistics of natural data directly.</div>
+          <div class="pp-body">We model the posterior score as the sum of a likelihood and a prior term,</div>
+          <div class="pp-eq">∇<sub><span class="math-var">x</span></sub> log <span class="math-var">p</span>(<span class="math-var">x</span>&thinsp;|&thinsp;<span class="math-var">y</span>) = ∇<sub><span class="math-var">x</span></sub> log <span class="math-var">p</span>(<span class="math-var">y</span>&thinsp;|&thinsp;<span class="math-var">x</span>) + ∇<sub><span class="math-var">x</span></sub> log <span class="math-var">p</span>(<span class="math-var">x</span>),<span class="eqno">(1)</span></div>
+          <div class="pp-body">where the intractable prior term is approximated by a time-conditioned score network <span class="math-var">s</span><sub><span class="math-var">θ</span></sub>(<span class="math-var">x</span>, <span class="math-var">t</span>) ≈ ∇<sub><span class="math-var">x</span></sub> log <span class="math-var">p</span><sub><span class="math-var">t</span></sub>(<span class="math-var">x</span>). The full sampler interleaves an unconditional reverse step with the measurement gradient; see the architecture in the figure below.</div>
+
+          <div class="pp-fig">
+            <div class="ph">[ figures/architecture.png ]</div>
+            <div class="cap"><b>Figure 1:</b> Two-branch sampler. The score branch denoises while the data branch enforces 𝒜<span class="math-var">x</span> ≈ <span class="math-var">y</span>.</div>
+          </div>
+
+          <div class="page-badge" style="position:absolute"></div>
+        </div>
+
+        <!-- page 2 -->
+        <div class="page page2">
+          <div class="pp-body noindent" style="margin-top:6px">consistency. At inference, the per-step projection requires only a single forward and adjoint application of 𝒜, keeping the overhead negligible relative to the score evaluation.</div>
+
+          <div class="pp-sec">2&nbsp;&nbsp;Method</div>
+          <div class="pp-body noindent">Let {<span class="math-var">t</span><sub>i</sub>}<sub>i=0</sub><sup>N</sup> be a decreasing noise schedule. Starting from <span class="math-var">x</span><sub>N</sub> ∼ 𝒩(0, <span class="math-var">σ</span><sub>max</sub><sup>2</sup>𝙸), each iteration applies the learned score followed by a gradient step on the data term, with step size <span class="math-var">ζ</span><sub>i</sub> annealed alongside the noise level.</div>
+          <div class="pp-eq"><span class="math-var">x</span><sub>i−1</sub> = <span class="math-var">x</span><sub>i</sub> + <span class="math-var">σ</span><sub>i</sub><sup>2</sup> <span class="math-var">s</span><sub><span class="math-var">θ</span></sub>(<span class="math-var">x</span><sub>i</sub>, <span class="math-var">t</span><sub>i</sub>) − <span class="math-var">ζ</span><sub>i</sub> 𝒜<sup>⊤</sup>(𝒜<span class="math-var">x</span><sub>i</sub> − <span class="math-var">y</span>).<span class="eqno">(2)</span></div>
+          <div class="pp-body">We find that decoupling the two step sizes is essential for stability at high measurement noise, mirroring observations in predictor–corrector samplers.</div>
+
+          <div class="pp-refs-h">References</div>
+          <div class="pp-ref">[1]&nbsp;&nbsp;Y. Song and S. Ermon. Generative modeling by estimating gradients of the data distribution. <i>NeurIPS</i>, 2019.</div>
+          <div class="pp-ref">[2]&nbsp;&nbsp;J. Ho, A. Jain, and P. Abbeel. Denoising diffusion probabilistic models. <i>NeurIPS</i>, 2020.</div>
+          <div class="pp-ref">[3]&nbsp;&nbsp;B. Kawar et al. Denoising diffusion restoration models. <i>ICLR</i>, 2023.</div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+/* ---------- LaTeX source + lightweight highlighter ---------- */
+const SRC = [
+  ['cmd','\\\\documentclass','br','[','arg','11pt','br',']','br','{','env','article','br','}'],
+  ['raw'],
+  ['cmd','\\\\usepackage','br','{','arg','amsmath, amssymb','br','}'],
+  ['cmd','\\\\usepackage','br','{','arg','graphicx','br','}'],
+  ['cmd','\\\\usepackage','br','[','arg','numbers','br',']','br','{','arg','natbib','br','}'],
+  ['cmd','\\\\input','br','{','arg','preamble','br','}'],
+  ['raw'],
+  ['cmd','\\\\title','br','{','arg','Score-Based Diffusion Priors for','cmd','\\\\\\\\','arg',' Inverse Imaging Problems','br','}'],
+  ['cmd','\\\\author','br','{','arg','A. Mercer ','cmd','\\\\and','arg',' L. Nakamura ','cmd','\\\\and','arg',' R. Osei','br','}'],
+  ['cmd','\\\\date','br','{','cmd','\\\\today','br','}'],
+  ['raw'],
+  ['cmd','\\\\begin','br','{','env','document','br','}'],
+  ['cmd','\\\\maketitle'],
+  ['raw'],
+  ['cmd','\\\\begin','br','{','env','abstract','br','}'],
+  ['arg','We study score-based generative models as learned priors for'],
+  ['arg','ill-posed inverse problems. By coupling the reverse diffusion process'],
+  ['arg','with a measurement-consistency projection we obtain reconstructions','cm',' % TODO: tighten'],
+  ['arg','that are both data-faithful and perceptually sharp.'],
+  ['cmd','\\\\end','br','{','env','abstract','br','}'],
+  ['raw'],
+  ['cmd','\\\\section','br','{','arg','Introduction','br','}'],
+  ['cmd','\\\\label','br','{','arg','sec:intro','br','}'],
+  ['arg','Reconstructing a signal ','mt','$x$','arg',' from noisy measurements'],
+  ['mt','$y = \\\\mathcal{A}x + \\\\eta$','arg',' is fundamentally underdetermined.'],
+  ['arg','We model the posterior score via'],
+  ['cmd','\\\\begin','br','{','env','equation','br','}'],
+  ['mt','  \\\\nabla_x \\\\log p(x \\\\mid y) = \\\\nabla_x \\\\log p(y \\\\mid x)'],
+  ['mt','    + \\\\nabla_x \\\\log p(x).'],
+  ['cmd','\\\\end','br','{','env','equation','br','}'],
+  ['arg','The prior term is approximated by a score network ','mt','$s_\\\\theta(x,t)$,'],
+  ['arg','see Figure~','cmd','\\\\ref','br','{','arg','fig:arch','br','}','arg',' for the architecture.'],
+  ['raw'],
+  ['cmd','\\\\end','br','{','env','document','br','}']
+];
+
+const CLS = { cmd:'cmd', env:'env', br:'br', arg:'', cm:'cm', mt:'mt', nu:'nu', ky:'ky' };
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+const WARN_LINES = new Set([17, 32]);   // 1-indexed lines with warnings
+const CURSOR_LINE = 32;
+
+const editor = document.getElementById('editor');
+SRC.forEach((toks, idx) => {
+  const lineNo = idx + 1;
+  const div = document.createElement('div');
+  div.className = 'eln' + (WARN_LINES.has(lineNo) ? ' warn' : '') + (lineNo === CURSOR_LINE ? ' cursor' : '');
+  let code = '';
+  if (toks[0] !== 'raw') {
+    for (let i = 0; i < toks.length; i += 2) {
+      const type = toks[i], txt = toks[i + 1];
+      const cls = CLS[type] ?? '';
+      code += cls ? `<span class="${cls}">${esc(txt)}</span>` : esc(txt);
+    }
+  }
+  div.innerHTML = `<span class="ln-no">${lineNo}</span><span class="ln-code">${code || '&nbsp;'}</span>`;
+  editor.appendChild(div);
+});
+
+/* ---------- problems panel collapse ---------- */
+document.getElementById('probHead').addEventListener('click', () => {
+  document.getElementById('problems').classList.toggle('collapsed');
+});
+
+/* ---------- auto-compile toggle ---------- */
+document.getElementById('autoToggle').addEventListener('click', () => {
+  document.getElementById('autoSwitch').classList.toggle('off');
+});
+
+/* ---------- theme toggle ---------- */
+const SUN = '<circle cx="12" cy="12" r="4.5"></circle><line x1="12" y1="2" x2="12" y2="4.5"></line><line x1="12" y1="19.5" x2="12" y2="22"></line><line x1="4" y1="4" x2="5.8" y2="5.8"></line><line x1="18.2" y1="18.2" x2="20" y2="20"></line><line x1="2" y1="12" x2="4.5" y2="12"></line><line x1="19.5" y1="12" x2="22" y2="12"></line><line x1="4" y1="20" x2="5.8" y2="18.2"></line><line x1="18.2" y1="5.8" x2="20" y2="4"></line>';
+const MOON = '<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"></path>';
+const root = document.documentElement;
+const themeIco = document.getElementById('themeIco');
+function applyTheme(t){
+  root.setAttribute('data-theme', t);
+  themeIco.innerHTML = t === 'dark' ? MOON : SUN;
+  try { localStorage.setItem('texly-theme', t); } catch(e){}
+}
+applyTheme((()=>{ try { return localStorage.getItem('texly-theme') || 'dark'; } catch(e){ return 'dark'; } })());
+document.getElementById('themeBtn').addEventListener('click', () => {
+  applyTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+});
+</script>
+</body>
+</html>
