@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y \
     fonts-lmodern \
     fonts-dejavu \
     fonts-liberation \
-    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Tectonic
 RUN wget -qO /tmp/tectonic.tar.gz \
