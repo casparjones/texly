@@ -21,7 +21,10 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     wget \
     fontconfig \
-    && rm -rf /var/lib/apt/lists/*
+    fonts-lmodern \
+    fonts-dejavu \
+    fonts-liberation \
+    && rm -rf /var/lib/apt/lists/* \
 
 # Install Tectonic
 RUN wget -qO /tmp/tectonic.tar.gz \
