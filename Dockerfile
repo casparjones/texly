@@ -17,13 +17,32 @@ RUN touch src/main.rs && cargo build --release
 
 # Runtime stage
 FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y \
+# Curated font base set for the Tectonic/XeTeX backend. XeTeX resolves
+# \setmainfont{...} via system fontconfig (not the TeX tree), so these must be
+# installed in the image and fc-cache must be primed at build time.
+#   lmodern + TeX Gyre  → classic LaTeX look, Times/Helvetica/Palatino substitutes
+#   Liberation          → metric-compatible MS replacements (Arial/Times/Courier)
+#   Noto + CJK + Emoji  → full Unicode script coverage
+#   EB Garamond         → nice serif bonus. NB: Debian ships the optical-size
+#                         variant, so use \setmainfont{EB Garamond 12} (the bare
+#                         "EB Garamond" superfamily has non-standard style names
+#                         "12 Bold"/"08 Regular" that fontspec can't auto-resolve).
+# All OFL/GUST/Apache — safe to bundle. (NB: 'lmodern' is the correct Debian
+# package name; the old 'fonts-lmodern' does not exist.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     wget \
     fontconfig \
-    fonts-lmodern \
-    fonts-dejavu \
+    lmodern \
+    fonts-texgyre \
+    fonts-noto \
+    fonts-noto-cjk \
+    fonts-noto-color-emoji \
     fonts-liberation \
+    fonts-dejavu \
+    fonts-ebgaramond \
+    && fc-cache -f \
+    && echo "fc-list reports $(fc-list | wc -l) font files" \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Tectonic
