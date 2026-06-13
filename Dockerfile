@@ -45,6 +45,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && echo "fc-list reports $(fc-list | wc -l) font files" \
     && rm -rf /var/lib/apt/lists/*
 
+# Font fallback safety net.
+#  - 99-texly.conf: fontconfig alias families (__texly_serif/_sans/_mono).
+#    NB: Tectonic/XeTeX does NOT honor fontconfig <alias> families for
+#    \setmainfont — verified. The conf is kept for fc-match / non-Tectonic
+#    consumers; the *effective* safety net for documents is texly-fonts.tex.
+#  - texly-fonts.tex: \input-able preamble helpers (\texlySetMain/Sans/Mono)
+#    that degrade to a real bundled family via \IfFontExistsTF instead of
+#    failing the compile.
+COPY deploy/fontconfig/99-texly.conf /etc/fonts/conf.d/99-texly.conf
+COPY deploy/fontconfig/texly-fonts.tex /usr/share/texly/texly-fonts.tex
+RUN fc-cache -f
+
 # Install Tectonic
 RUN wget -qO /tmp/tectonic.tar.gz \
     "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.16.9/tectonic-0.16.9-x86_64-unknown-linux-musl.tar.gz" \
