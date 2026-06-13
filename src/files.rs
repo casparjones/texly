@@ -49,19 +49,11 @@ fn normalize_path(path: &Path) -> PathBuf {
     components.iter().collect()
 }
 
-pub fn check_access_pub(
-    auth: &AuthUser,
-    data_dir: &Path,
-    path: &str,
-) -> Result<PathBuf, AppError> {
+pub fn check_access_pub(auth: &AuthUser, data_dir: &Path, path: &str) -> Result<PathBuf, AppError> {
     check_access(auth, data_dir, path)
 }
 
-fn check_access(
-    auth: &AuthUser,
-    data_dir: &Path,
-    path: &str,
-) -> Result<PathBuf, AppError> {
+fn check_access(auth: &AuthUser, data_dir: &Path, path: &str) -> Result<PathBuf, AppError> {
     let path = path.trim_start_matches('/');
     let parts: Vec<&str> = path.splitn(3, '/').collect();
 
@@ -94,7 +86,11 @@ pub async fn list_roots(
                 .await
                 .map_err(|e| AppError::Internal(anyhow::anyhow!("read home dir: {e}")))?;
             let mut home_entries = Vec::new();
-            while let Some(entry) = rd.next_entry().await.map_err(|e| AppError::Internal(anyhow::anyhow!(e)))? {
+            while let Some(entry) = rd
+                .next_entry()
+                .await
+                .map_err(|e| AppError::Internal(anyhow::anyhow!(e)))?
+            {
                 if entry.file_type().await.map(|t| t.is_dir()).unwrap_or(false) {
                     let name = entry.file_name().to_string_lossy().to_string();
                     home_entries.push(FileEntry {
@@ -145,7 +141,7 @@ pub async fn read_entry(
         .map_err(|e| AppError::Internal(anyhow::anyhow!(e)))?;
 
     if meta.is_dir() {
-        let entries = build_file_tree(&abs_path, &state.data_dir, &path)?;
+        let entries = build_file_tree(&abs_path, &path)?;
         Ok(Json(entries).into_response())
     } else {
         // Serve file with correct content type
@@ -153,19 +149,15 @@ pub async fn read_entry(
         let content = fs::read(&abs_path)
             .await
             .map_err(|e| AppError::Internal(anyhow::anyhow!(e)))?;
-        Ok((
-            [(header::CONTENT_TYPE, mime.as_ref().to_string())],
-            content,
-        )
-            .into_response())
+        Ok(([(header::CONTENT_TYPE, mime.as_ref().to_string())], content).into_response())
     }
 }
 
-fn build_file_tree(abs_dir: &Path, data_dir: &Path, rel_prefix: &str) -> Result<Vec<FileEntry>, AppError> {
+fn build_file_tree(abs_dir: &Path, rel_prefix: &str) -> Result<Vec<FileEntry>, AppError> {
     let mut entries = Vec::new();
 
-    let read_dir = std::fs::read_dir(abs_dir)
-        .map_err(|e| AppError::Internal(anyhow::anyhow!(e)))?;
+    let read_dir =
+        std::fs::read_dir(abs_dir).map_err(|e| AppError::Internal(anyhow::anyhow!(e)))?;
 
     for entry in read_dir {
         let entry = entry.map_err(|e| AppError::Internal(anyhow::anyhow!(e)))?;
@@ -180,7 +172,7 @@ fn build_file_tree(abs_dir: &Path, data_dir: &Path, rel_prefix: &str) -> Result<
         let rel_path = format!("{}/{}", rel_prefix.trim_end_matches('/'), name);
 
         if meta.is_dir() {
-            let children = build_file_tree(&entry.path(), data_dir, &rel_path)?;
+            let children = build_file_tree(&entry.path(), &rel_path)?;
             entries.push(FileEntry {
                 name,
                 path: rel_path,
@@ -284,7 +276,9 @@ pub async fn move_entry(
     let dst_dir = check_access(&auth, &state.data_dir, &body.destination)?;
 
     if dst_dir.exists() && !dst_dir.is_dir() {
-        return Err(AppError::BadRequest("destination must be a directory".into()));
+        return Err(AppError::BadRequest(
+            "destination must be a directory".into(),
+        ));
     }
 
     fs::create_dir_all(&dst_dir)
@@ -360,7 +354,9 @@ fn copy_recursive(src: &Path, dst: &Path) -> anyhow::Result<()> {
             let entry = entry?;
             let name = entry.file_name();
             let name_str = name.to_string_lossy();
-            if name_str.starts_with('.') { continue; }
+            if name_str.starts_with('.') {
+                continue;
+            }
             copy_recursive(&entry.path(), &dst.join(&name))?;
         }
     } else {

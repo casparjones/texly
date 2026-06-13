@@ -107,11 +107,16 @@ where
             return Ok(MaybeAuth(Some(user)));
         }
         // Fall back: read JWT directly from cookie (route not behind middleware)
-        let jar = CookieJar::from_request_parts(parts, state).await.unwrap_or_default();
+        let jar = CookieJar::from_request_parts(parts, state)
+            .await
+            .unwrap_or_default();
         let app_state = AppState::from_ref(state);
         let user = jar.get(COOKIE_NAME).and_then(|c| {
             let claims = verify_token(c.value(), &app_state.jwt_secret).ok()?;
-            Some(AuthUser { username: claims.sub, role: claims.role })
+            Some(AuthUser {
+                username: claims.sub,
+                role: claims.role,
+            })
         });
         Ok(MaybeAuth(user))
     }
@@ -127,11 +132,11 @@ pub async fn login(
     let record = state
         .users
         .verify(&req.username, &req.password)
-        .map_err(|e| AppError::Internal(e))?
+        .map_err(AppError::Internal)?
         .ok_or(AppError::Unauthorized)?;
 
     let token = create_token(&record.username, &record.role, &state.jwt_secret)
-        .map_err(|e| AppError::Internal(e))?;
+        .map_err(AppError::Internal)?;
 
     let cookie = format!(
         "{COOKIE_NAME}={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={TOKEN_EXPIRY_SECS}"
