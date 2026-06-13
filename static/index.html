@@ -842,6 +842,7 @@
       <div style="flex:1"></div>
       <button class="pdf-btn" id="downloadPdf" title="PDF herunterladen" style="font-size:14px">⬇</button>
       <select id="zoomSelect">
+        <option value="fit">Breite</option>
         <option value="0.5">50%</option>
         <option value="0.75">75%</option>
         <option value="1" selected>100%</option>
@@ -996,6 +997,8 @@ let autoCompile = false;
 let autoCompileTimer = null;
 let pdfDoc = null;
 let pdfScale = 1.0;
+let pdfFitWidth = false;      // 'Breite' zoom: scale each page to the viewer width
+let pdfZoomUserSet = false;   // user picked a zoom → don't override on mobile
 let currentPdfPath = null;
 let ctxTarget = null;         // tree item for context menu
 let newItemMode = null;       // 'file' | 'dir'
@@ -1818,9 +1821,10 @@ async function runCompile() {
 
     if (result.ok) {
       currentPdfPath = compileTarget; // file path → serve_pdf uses matching .pdf
-      await loadPdf();
-      // On mobile, reveal the freshly rendered PDF layer.
+      // Reveal the PDF layer first so fit-to-width can measure the viewer width
+      // (a hidden panel has clientWidth 0).
       if (isMobile()) setMobileView('pdf');
+      await loadPdf();
     }
   } catch (e) {
     statusDot.className = 'err';
@@ -1881,6 +1885,13 @@ async function loadPdf() {
   if (!currentPdfPath) return;
   pdfEmpty.style.display = 'none';
 
+  // On phones, default to fit-to-width so the page isn't cut off (unless the
+  // user has already chosen a zoom level themselves).
+  if (isMobile() && !pdfZoomUserSet) {
+    pdfFitWidth = true;
+    zoomSel.value = 'fit';
+  }
+
   try {
     const url = `/api/pdf/${currentPdfPath}?t=${Date.now()}`;
     const task = pdfjsLib.getDocument(url);
@@ -1895,12 +1906,20 @@ async function loadPdf() {
   }
 }
 
+function pageScaleFor(page) {
+  if (!pdfFitWidth) return pdfScale;
+  // Fit the page to the available viewer width (minus the 12px container padding).
+  const unscaled = page.getViewport({ scale: 1 });
+  const avail = pdfContainer.clientWidth - 24;
+  return avail > 0 ? Math.max(0.1, avail / unscaled.width) : pdfScale;
+}
+
 async function renderAllPages() {
   if (!pdfDoc) return;
   pdfContainer.innerHTML = '';
   for (let p = 1; p <= pdfDoc.numPages; p++) {
     const page = await pdfDoc.getPage(p);
-    const viewport = page.getViewport({ scale: pdfScale });
+    const viewport = page.getViewport({ scale: pageScaleFor(page) });
     const canvas = document.createElement('canvas');
     canvas.width = viewport.width;
     canvas.height = viewport.height;
@@ -1936,8 +1955,22 @@ function scrollToPage(n) {
 }
 
 zoomSel.addEventListener('change', async () => {
-  pdfScale = parseFloat(zoomSel.value);
+  pdfZoomUserSet = true;
+  if (zoomSel.value === 'fit') {
+    pdfFitWidth = true;
+  } else {
+    pdfFitWidth = false;
+    pdfScale = parseFloat(zoomSel.value);
+  }
   if (pdfDoc) await renderAllPages();
+});
+
+// Re-fit on viewport changes (e.g. phone rotation) while in fit-width mode.
+let pdfResizeTimer = null;
+window.addEventListener('resize', () => {
+  if (!pdfFitWidth || !pdfDoc) return;
+  clearTimeout(pdfResizeTimer);
+  pdfResizeTimer = setTimeout(() => renderAllPages(), 200);
 });
 
 // ── User management ───────────────────────────────────────────────────────────
