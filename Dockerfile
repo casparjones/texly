@@ -70,7 +70,7 @@ COPY static ./static
 COPY --from=jsbuild /jsbuild/editor.bundle.js ./static/js/editor.bundle.js
 
 # Data volumes
-RUN mkdir -p /data/users /data/home /data/share /root/.cache/tectonic
+RUN mkdir -p /data/users /data/home /data/share /data/fonts /root/.cache/tectonic
 
 EXPOSE 8080
 ENV TEXLY_DATA_DIR=/data \

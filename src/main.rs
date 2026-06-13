@@ -3,6 +3,7 @@ mod auth;
 mod compile;
 mod error;
 mod files;
+mod fonts;
 mod log_parser;
 mod models;
 mod users;
@@ -29,15 +30,21 @@ pub struct AppState {
     pub data_dir: PathBuf,
     pub jwt_secret: String,
     pub compile_locks: Arc<DashMap<String, Arc<tokio::sync::Mutex<()>>>>,
+    /// Opt-in: fetch missing fonts from the whitelisted source before compiling.
+    pub font_autodownload: bool,
+    /// Persistent on-disk cache for downloaded fonts (scanned by fontconfig).
+    pub font_cache_dir: PathBuf,
+    pub font_locks: fonts::FontLocks,
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Init tracing
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-            "texly=info,tower_http=info".parse().unwrap()
-        }))
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "texly=info,tower_http=info".parse().unwrap()),
+        )
         .with(tracing_subscriber::fmt::layer())
         .init();
 
@@ -54,6 +61,17 @@ async fn main() -> anyhow::Result<()> {
         .expect("TEXLY_PORT must be a number");
     let static_dir = std::env::var("TEXLY_STATIC_DIR").unwrap_or("./static".into());
 
+    // Opt-in dynamic font downloader (off unless TEXLY_FONT_AUTODOWNLOAD=1).
+    let font_autodownload = matches!(
+        std::env::var("TEXLY_FONT_AUTODOWNLOAD").as_deref(),
+        Ok("1") | Ok("true") | Ok("yes")
+    );
+    // Persistent font cache; must be listed as a <dir> in the fontconfig conf
+    // (deploy/fontconfig/99-texly.conf) so fontconfig scans it. Lives under a
+    // mounted volume so downloaded fonts survive restarts.
+    let font_cache_dir =
+        PathBuf::from(std::env::var("TEXLY_FONT_CACHE_DIR").unwrap_or("/data/fonts".into()));
+
     // Create data directories
     let users_dir = data_dir.join("users");
     let home_dir = data_dir.join("home");
@@ -62,10 +80,16 @@ async fn main() -> anyhow::Result<()> {
     std::fs::create_dir_all(&users_dir)?;
     std::fs::create_dir_all(&home_dir)?;
     std::fs::create_dir_all(&share_dir)?;
+    if font_autodownload {
+        std::fs::create_dir_all(&font_cache_dir)?;
+        tracing::info!(
+            "font auto-download enabled; cache at {}",
+            font_cache_dir.display()
+        );
+    }
 
     // Canonicalize so all derived paths (compile, pdf serve) are absolute
-    let data_dir = data_dir.canonicalize()
-        .unwrap_or_else(|_| data_dir.clone());
+    let data_dir = data_dir.canonicalize().unwrap_or_else(|_| data_dir.clone());
     let users_dir = data_dir.join("users");
 
     let user_store = Arc::new(UserStore::new(users_dir)?);
@@ -81,6 +105,9 @@ async fn main() -> anyhow::Result<()> {
         data_dir,
         jwt_secret,
         compile_locks: Arc::new(DashMap::new()),
+        font_autodownload,
+        font_cache_dir,
+        font_locks: Arc::new(DashMap::new()),
     };
 
     // Build router
