@@ -41,7 +41,8 @@ pub async fn export_zip(
         .unwrap_or("export")
         .to_string();
 
-    let bytes = tokio::task::spawn_blocking(move || build_zip(&dir)).await
+    let bytes = tokio::task::spawn_blocking(move || build_zip(&dir))
+        .await
         .map_err(|e| AppError::Internal(anyhow::anyhow!(e)))?
         .map_err(|e| AppError::Internal(anyhow::anyhow!(e)))?;
 
@@ -65,7 +66,11 @@ fn build_zip(dir: &Path) -> anyhow::Result<Vec<u8>> {
     let mut zw = ZipWriter::new(cursor);
     let opts = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
-    for entry in WalkDir::new(dir).min_depth(1).into_iter().filter_map(|e| e.ok()) {
+    for entry in WalkDir::new(dir)
+        .min_depth(1)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
         let rel = entry.path().strip_prefix(dir)?;
         let rel_str = rel.to_string_lossy();
 
@@ -107,10 +112,7 @@ pub async fn import_zip(
         .await
         .map_err(|e| AppError::BadRequest(format!("multipart: {e}")))?
     {
-        let filename = field
-            .file_name()
-            .map(|s| s.to_string())
-            .unwrap_or_default();
+        let filename = field.file_name().map(|s| s.to_string()).unwrap_or_default();
 
         if !filename.to_lowercase().ends_with(".zip") {
             return Err(AppError::BadRequest("only .zip files supported".into()));
