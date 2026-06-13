@@ -746,6 +746,13 @@
       #compileBtn .btn-label { display: none; }
       #compileDuration { display: none; }
       #breadcrumb { font-size: 12px; }
+
+      /* Editor: 16px stops iOS from zooming the page on focus; momentum scroll */
+      .cm-editor { font-size: 16px !important; }
+      .cm-scroller { -webkit-overflow-scrolling: touch; }
+      /* Slimmer problems panel so the editor gets the vertical space */
+      #problemsPanel { height: 104px; }
+      #termResizeHandle { display: none; }   /* drag-resize is mouse-only */
     }
   </style>
 </head>
@@ -1669,6 +1676,15 @@ function loadEditorContent(tab) {
         basicSetup,
         StreamLanguage.define(stex),
         theme,
+        // Touch/mobile: wrap long lines (no painful horizontal scroll on phones)
+        // and stop the mobile keyboard from mangling LaTeX commands.
+        EditorView.lineWrapping,
+        EditorView.contentAttributes.of({
+          autocapitalize: 'off',
+          autocorrect: 'off',
+          autocomplete: 'off',
+          spellcheck: 'false',
+        }),
         EditorView.updateListener.of(update => {
           if (update.docChanged) {
             const t = tabs[activeTabIndex];
