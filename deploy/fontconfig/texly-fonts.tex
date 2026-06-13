@@ -1,0 +1,34 @@
+% texly-fonts.tex — font safety net for Tectonic/XeTeX documents.
+%
+% VALIDATED FINDING: Tectonic does NOT honor fontconfig <alias> families
+% (e.g. __texly_serif). `fc-match __texly_serif` resolves on the host, but
+% \setmainfont{__texly_serif} fails inside Tectonic — its XeTeX font lookup
+% matches real family names only. So a robust "never fail" net must degrade to
+% a REAL bundled family via fontspec's \IfFontExistsTF, which is what these
+% helpers do.
+%
+% Usage in a document preamble:
+%   \input{/usr/share/texly/texly-fonts}   % installed in the Texly image
+%   \texlySetMain{EB Garamond 12}          % falls back if the font is missing
+%   \texlySetSans{Fira Sans}
+%   \texlySetMono{JetBrains Mono}
+%
+% Each helper tries the requested family; if absent, it degrades to a bundled
+% base-set family instead of aborting the compile.
+
+\usepackage{fontspec}
+
+\newcommand{\texlySetMain}[1]{%
+  \IfFontExistsTF{#1}{\setmainfont{#1}}{%
+    \IfFontExistsTF{TeX Gyre Termes}{\setmainfont{TeX Gyre Termes}}%
+      {\setmainfont{Latin Modern Roman}}}}
+
+\newcommand{\texlySetSans}[1]{%
+  \IfFontExistsTF{#1}{\setsansfont{#1}}{%
+    \IfFontExistsTF{TeX Gyre Heros}{\setsansfont{TeX Gyre Heros}}%
+      {\setsansfont{Latin Modern Sans}}}}
+
+\newcommand{\texlySetMono}[1]{%
+  \IfFontExistsTF{#1}{\setmonofont{#1}}{%
+    \IfFontExistsTF{TeX Gyre Cursor}{\setmonofont{TeX Gyre Cursor}}%
+      {\setmonofont{Latin Modern Mono}}}}
