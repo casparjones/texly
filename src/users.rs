@@ -5,12 +5,12 @@ use argon2::{
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
-use rand::rngs::OsRng;
 use axum::{
     extract::{Path, State},
     Json,
 };
 use chrono::Utc;
+use rand::rngs::OsRng;
 
 use crate::{
     auth::{AuthUser, MaybeAuth},
@@ -23,7 +23,9 @@ pub fn validate_username(name: &str) -> bool {
     !name.is_empty()
         && name.len() >= 2
         && name.len() <= 32
-        && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
 }
 
 pub struct UserStore {
@@ -163,10 +165,7 @@ pub async fn list_users(
     if !auth.role.is_admin_or_above() {
         return Err(AppError::Forbidden);
     }
-    let users = state
-        .users
-        .list()
-        .map_err(|e| AppError::Internal(e))?;
+    let users = state.users.list().map_err(AppError::Internal)?;
     Ok(Json(users))
 }
 
@@ -195,7 +194,9 @@ pub async fn create_user(
         ));
     }
     if req.password.len() < 6 {
-        return Err(AppError::BadRequest("password too short (min 6 chars)".into()));
+        return Err(AppError::BadRequest(
+            "password too short (min 6 chars)".into(),
+        ));
     }
 
     if state.users.exists(&req.username) {
@@ -220,7 +221,7 @@ pub async fn create_user(
     state
         .users
         .create(&req.username, &req.password, effective_role.clone())
-        .map_err(|e| AppError::Internal(e))?;
+        .map_err(AppError::Internal)?;
 
     tracing::info!("created user: {}", req.username);
     Ok(Json(UserInfo {
@@ -240,7 +241,7 @@ pub async fn get_user(
     let record = state
         .users
         .get(&username)
-        .map_err(|e| AppError::Internal(e))?
+        .map_err(AppError::Internal)?
         .ok_or(AppError::NotFound)?;
     Ok(Json(UserInfo {
         username: record.username,
@@ -257,7 +258,7 @@ pub async fn update_user(
     let target = state
         .users
         .get(&username)
-        .map_err(|e| AppError::Internal(e))?
+        .map_err(AppError::Internal)?
         .ok_or(AppError::NotFound)?;
 
     // Permission checks
@@ -286,23 +287,21 @@ pub async fn update_user(
 
     if let Some(ref pw) = req.password {
         if pw.len() < 6 {
-            return Err(AppError::BadRequest("password too short (min 6 chars)".into()));
+            return Err(AppError::BadRequest(
+                "password too short (min 6 chars)".into(),
+            ));
         }
     }
 
     state
         .users
-        .update(
-            &username,
-            req.password.as_deref(),
-            req.role.clone(),
-        )
-        .map_err(|e| AppError::Internal(e))?;
+        .update(&username, req.password.as_deref(), req.role.clone())
+        .map_err(AppError::Internal)?;
 
     let updated = state
         .users
         .get(&username)
-        .map_err(|e| AppError::Internal(e))?
+        .map_err(AppError::Internal)?
         .ok_or(AppError::NotFound)?;
 
     Ok(Json(UserInfo {
@@ -322,10 +321,7 @@ pub async fn delete_user(
     if auth.username == username {
         return Err(AppError::BadRequest("cannot delete yourself".into()));
     }
-    let found = state
-        .users
-        .delete(&username)
-        .map_err(|e| AppError::Internal(e))?;
+    let found = state.users.delete(&username).map_err(AppError::Internal)?;
     if !found {
         return Err(AppError::NotFound);
     }

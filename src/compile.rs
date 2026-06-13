@@ -71,6 +71,14 @@ pub async fn compile_project(
         .await
         .map_err(|e| AppError::Internal(anyhow::anyhow!(e)))?;
 
+    // Opt-in: resolve/download any fonts the document requests before compiling.
+    // Best-effort and time-bounded; never fails the compile on its own.
+    if state.font_autodownload {
+        if let Ok(src) = tokio::fs::read_to_string(&tex_file).await {
+            crate::fonts::ensure_fonts_for_source(&state, &src).await;
+        }
+    }
+
     let start = Instant::now();
 
     // Run tectonic — use filename only so it resolves relative to current_dir
@@ -92,21 +100,17 @@ pub async fn compile_project(
     let duration_ms = start.elapsed().as_millis() as u64;
 
     match result {
-        Err(_) => {
-            return Ok(Json(CompileResult {
-                ok: false,
-                duration_ms,
-                errors: vec![DiagnosticItem {
-                    file: None,
-                    line: None,
-                    message: "compile timeout (120s)".into(),
-                }],
-                warnings: vec![],
-            }));
-        }
-        Ok(Err(e)) => {
-            return Err(AppError::Internal(anyhow::anyhow!("spawn tectonic: {e}")));
-        }
+        Err(_) => Ok(Json(CompileResult {
+            ok: false,
+            duration_ms,
+            errors: vec![DiagnosticItem {
+                file: None,
+                line: None,
+                message: "compile timeout (120s)".into(),
+            }],
+            warnings: vec![],
+        })),
+        Ok(Err(e)) => Err(AppError::Internal(anyhow::anyhow!("spawn tectonic: {e}"))),
         Ok(Ok(output)) => {
             let stdout = String::from_utf8_lossy(&output.stdout);
             let stderr = String::from_utf8_lossy(&output.stderr);
